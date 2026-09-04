@@ -32,12 +32,17 @@
 <p class="lead mono">{{$n.PublicIP}} · {{$n.ID}}</p>
 <p><span class="badge {{$card.StatusClass}}">{{$card.Status}}</span> <span class="transport">{{$card.Transport}}</span></p>
 
-{{if .CanWrite}}
 <div class="actions">
-  <button type="button" hx-post="/nodes/{{$n.ID}}/apply" hx-vals='{"dry_run":"true"}' hx-target="#plan" hx-swap="innerHTML">Dry-run</button>
-  <button type="button" class="secondary" hx-post="/nodes/{{$n.ID}}/apply" hx-vals='{"dry_run":"false"}' hx-target="#plan" hx-swap="innerHTML">Apply</button>
+  <button type="button" hx-get="/nodes/{{$n.ID}}/plan" hx-target="#plan" hx-swap="innerHTML">Plan preview</button>
+  {{if .CanWrite}}
+    {{if .LiveApply}}
+  <button type="button" class="secondary" hx-post="/nodes/{{$n.ID}}/apply" hx-target="#plan" hx-swap="innerHTML">Apply</button>
+    {{else}}
+  <button type="button" class="secondary" disabled>Apply</button>
+  <p class="muted">Live apply is not enabled on this controller.</p>
+    {{end}}
+  {{end}}
 </div>
-{{end}}
 
 <div class="panel">
   <h2>Desired vs actual</h2>
@@ -106,8 +111,8 @@
 {{if and .CanWrite .Data.CanFailback}}
 <div class="panel">
   <h2>Failback</h2>
-  <p class="muted">Records a fail-forward intent (SSH → WireGuard). Confirm because this is a transport cutover.</p>
-  <form method="post" action="/nodes/{{$n.ID}}/failback" hx-confirm="Record a fail-forward intent for this node? This is a transport cutover.">
+  <p class="muted">Requests Failback: SSH_PRIMARY → WG_PRIMARY. Confirm because this is a transport cutover.</p>
+  <form method="post" action="/nodes/{{$n.ID}}/failback" hx-confirm="Request Failback for this node? This transitions SSH_PRIMARY to WG_PRIMARY.">
     <label>Backend
       <select name="backend" required>
         {{range .Data.Failback}}

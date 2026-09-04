@@ -19,6 +19,7 @@ type page struct {
 	Nav       string
 	Principal *model.PrincipalView
 	CanWrite  bool
+	LiveApply bool
 	FlashOK   string
 	FlashErr  string
 	Partial   bool

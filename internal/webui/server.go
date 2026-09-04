@@ -22,6 +22,7 @@ type Config struct {
 	Log          *logging.Logger
 	CookieSecure bool
 	Now          func() time.Time
+	LiveApply    bool
 }
 
 // Server is the localhost operator UI. It is not the data-plane API.
@@ -34,6 +35,7 @@ type Server struct {
 	static       fs.FS
 	cookieSecure bool
 	now          func() time.Time
+	liveApply    bool
 }
 
 func New(cfg Config) (*Server, error) {
@@ -71,6 +73,7 @@ func New(cfg Config) (*Server, error) {
 		static:       static,
 		cookieSecure: cfg.CookieSecure,
 		now:          cfg.Now,
+		liveApply:    cfg.LiveApply,
 	}, nil
 }
 
@@ -84,6 +87,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /", s.requireSession(s.dashboard))
 	mux.HandleFunc("GET /nodes", s.requireSession(s.nodesList))
 	mux.HandleFunc("GET /nodes/{id}", s.requireSession(s.nodeDetail))
+	mux.HandleFunc("GET /nodes/{id}/plan", s.requireSession(s.nodePlan))
 	mux.HandleFunc("POST /nodes/{id}/apply", s.requireSession(s.nodeApply))
 	mux.HandleFunc("POST /nodes/{id}/failback", s.requireSession(s.nodeFailback))
 
@@ -204,10 +208,11 @@ func (s *Server) writeForbidden(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) pageBase(r *http.Request, title, nav string) page {
 	sess := s.sessionFrom(r)
-	p := page{Title: title, Nav: nav}
+	p := page{Title: title, Nav: nav, LiveApply: s.liveApply}
 	if sess != nil {
 		p.Principal = &model.PrincipalView{Name: sess.Name, Role: sess.Role}
 		p.CanWrite = canWrite(sess.Role)
+		p.LiveApply = s.liveApply
 		p.FlashOK, p.FlashErr = s.sessions.takeFlash(sess.ID)
 	}
 	return p

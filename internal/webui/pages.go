@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"proxyctl/internal/model"
-	"proxyctl/internal/reconcile"
 )
 
 func (s *Server) getLogin(w http.ResponseWriter, r *http.Request) {
@@ -118,11 +117,13 @@ func (s *Server) nodeDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	runtime, _ := api.GetActualState(ctx, id)
-	actual := model.ActualState{NodeID: node.ID}
-	if runtime != nil && runtime.Actual != nil {
-		actual = *runtime.Actual
+	planText := "NO CHANGES\n"
+	if pv, err := api.Plan(ctx, id); err == nil && pv != nil && pv.Plan != "" {
+		planText = pv.Plan
+	} else if err != nil {
+		s.pageErr(w, r, err)
+		return
 	}
-	plan := reconcile.Diff(*ds, actual).String()
 	allMappings, err := api.ListMappings(ctx)
 	if err != nil {
 		s.pageErr(w, r, err)
@@ -151,7 +152,7 @@ func (s *Server) nodeDetail(w http.ResponseWriter, r *http.Request) {
 		"Tunnels":     tunnels,
 		"Mappings":    nodeMappings,
 		"Sni":         flattenSni(ds.SniRoutes, cat),
-		"Plan":        plan,
+		"Plan":        planText,
 		"Failback":    failbackBackends(ds, runtime),
 		"Catalog":     cat,
 		"CanFailback": len(failbackBackends(ds, runtime)) > 0,
@@ -346,7 +347,7 @@ func (s *Server) sniDetail(w http.ResponseWriter, r *http.Request) {
 func (s *Server) eventsList(w http.ResponseWriter, r *http.Request) {
 	api := s.api(r)
 	ctx := r.Context()
-	events, err := api.ListAudit(ctx, queryString(r.URL))
+	events, err := api.ListEvents(ctx, queryString(r.URL))
 	if err != nil {
 		s.pageErr(w, r, err)
 		return
@@ -362,8 +363,9 @@ func (s *Server) eventsList(w http.ResponseWriter, r *http.Request) {
 		"Filter": map[string]string{
 			"Node":    q.Get("node"),
 			"Backend": q.Get("backend"),
-			"From":    q.Get("from"),
-			"To":      q.Get("to"),
+			"Since":   q.Get("since"),
+			"Until":   q.Get("until"),
+			"Action":  q.Get("action"),
 		},
 	}
 	s.render(w, r, "events", p)

@@ -20,23 +20,23 @@ type API interface {
 	ListBackends(ctx context.Context) ([]model.Backend, error)
 	GetBackend(ctx context.Context, id string) (*model.Backend, error)
 	CreateBackend(ctx context.Context, b model.Backend) (*model.Backend, error)
-	UpdateBackend(ctx context.Context, b model.Backend) (*model.Backend, error)
+	PatchBackend(ctx context.Context, b model.Backend) (*model.Backend, error)
 	ListTunnels(ctx context.Context) ([]model.Tunnel, error)
 	CreateTunnel(ctx context.Context, t model.Tunnel) (*model.Tunnel, error)
 	ListMappings(ctx context.Context) ([]model.PortMapping, error)
 	CreateMapping(ctx context.Context, m model.PortMapping) (*model.PortMapping, error)
-	UpdateMapping(ctx context.Context, m model.PortMapping) (*model.PortMapping, error)
-	PatchMapping(ctx context.Context, id string, enabled bool) (*model.PortMapping, error)
+	PatchMapping(ctx context.Context, id string, patch model.MappingPatch) (*model.PortMapping, error)
 	DeleteMapping(ctx context.Context, id string) error
 	ListSniRoutes(ctx context.Context) ([]model.SniRoute, error)
 	GetSniRoute(ctx context.Context, id string) (*model.SniRoute, error)
 	CreateSniRoute(ctx context.Context, r model.SniRoute) (*model.SniRoute, error)
-	UpdateSniRoute(ctx context.Context, r model.SniRoute) (*model.SniRoute, error)
+	PatchSniRoute(ctx context.Context, r model.SniRoute) (*model.SniRoute, error)
 	DesiredState(ctx context.Context, nodeID string) (*model.DesiredState, error)
 	GetActualState(ctx context.Context, nodeID string) (*model.NodeActualState, error)
+	Plan(ctx context.Context, nodeID string) (*model.PlanView, error)
 	Apply(ctx context.Context, nodeID string, dryRun bool) (*model.ApplyResult, error)
 	Failback(ctx context.Context, nodeID, backend string) error
-	ListAudit(ctx context.Context, query string) ([]model.AuditEvent, error)
+	ListEvents(ctx context.Context, query string) ([]model.AuditEvent, error)
 }
 
 type liveAPI struct {
@@ -68,8 +68,8 @@ func (a *liveAPI) GetBackend(ctx context.Context, id string) (*model.Backend, er
 func (a *liveAPI) CreateBackend(ctx context.Context, b model.Backend) (*model.Backend, error) {
 	return a.c.CreateBackend(ctx, b)
 }
-func (a *liveAPI) UpdateBackend(ctx context.Context, b model.Backend) (*model.Backend, error) {
-	return a.c.UpdateBackend(ctx, b)
+func (a *liveAPI) PatchBackend(ctx context.Context, b model.Backend) (*model.Backend, error) {
+	return a.c.PatchBackend(ctx, b)
 }
 func (a *liveAPI) ListTunnels(ctx context.Context) ([]model.Tunnel, error) {
 	return a.c.ListTunnels(ctx)
@@ -83,11 +83,8 @@ func (a *liveAPI) ListMappings(ctx context.Context) ([]model.PortMapping, error)
 func (a *liveAPI) CreateMapping(ctx context.Context, m model.PortMapping) (*model.PortMapping, error) {
 	return a.c.CreateMapping(ctx, m)
 }
-func (a *liveAPI) UpdateMapping(ctx context.Context, m model.PortMapping) (*model.PortMapping, error) {
-	return a.c.UpdateMapping(ctx, m)
-}
-func (a *liveAPI) PatchMapping(ctx context.Context, id string, enabled bool) (*model.PortMapping, error) {
-	return a.c.PatchMapping(ctx, id, enabled)
+func (a *liveAPI) PatchMapping(ctx context.Context, id string, patch model.MappingPatch) (*model.PortMapping, error) {
+	return a.c.PatchMapping(ctx, id, patch)
 }
 func (a *liveAPI) DeleteMapping(ctx context.Context, id string) error {
 	return a.c.DeleteMapping(ctx, id)
@@ -101,8 +98,8 @@ func (a *liveAPI) GetSniRoute(ctx context.Context, id string) (*model.SniRoute, 
 func (a *liveAPI) CreateSniRoute(ctx context.Context, r model.SniRoute) (*model.SniRoute, error) {
 	return a.c.CreateSniRoute(ctx, r)
 }
-func (a *liveAPI) UpdateSniRoute(ctx context.Context, r model.SniRoute) (*model.SniRoute, error) {
-	return a.c.UpdateSniRoute(ctx, r)
+func (a *liveAPI) PatchSniRoute(ctx context.Context, r model.SniRoute) (*model.SniRoute, error) {
+	return a.c.PatchSniRoute(ctx, r)
 }
 func (a *liveAPI) DesiredState(ctx context.Context, nodeID string) (*model.DesiredState, error) {
 	return a.c.DesiredState(ctx, nodeID)
@@ -110,14 +107,17 @@ func (a *liveAPI) DesiredState(ctx context.Context, nodeID string) (*model.Desir
 func (a *liveAPI) GetActualState(ctx context.Context, nodeID string) (*model.NodeActualState, error) {
 	return a.c.GetActualState(ctx, nodeID)
 }
+func (a *liveAPI) Plan(ctx context.Context, nodeID string) (*model.PlanView, error) {
+	return a.c.Plan(ctx, nodeID)
+}
 func (a *liveAPI) Apply(ctx context.Context, nodeID string, dryRun bool) (*model.ApplyResult, error) {
 	return a.c.Apply(ctx, nodeID, dryRun)
 }
 func (a *liveAPI) Failback(ctx context.Context, nodeID, backend string) error {
 	return a.c.Failback(ctx, nodeID, backend)
 }
-func (a *liveAPI) ListAudit(ctx context.Context, query string) ([]model.AuditEvent, error) {
-	return a.c.ListAudit(ctx, query)
+func (a *liveAPI) ListEvents(ctx context.Context, query string) ([]model.AuditEvent, error) {
+	return a.c.ListEvents(ctx, query)
 }
 
 type loopback struct {

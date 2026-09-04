@@ -8,23 +8,44 @@ import (
 	"proxyctl/internal/model"
 )
 
+func (s *Server) nodePlan(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	res, err := s.api(r).Plan(r.Context(), id)
+	if err != nil {
+		if hx(r) {
+			writePlain(w, http.StatusBadRequest, s.apiErr(err))
+			return
+		}
+		s.flash(r, "", s.apiErr(err))
+		s.redirect(w, r, "/nodes/"+id)
+		return
+	}
+	plan := "NO CHANGES\n"
+	if res != nil && res.Plan != "" {
+		plan = res.Plan
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	p := s.pageBase(r, "", "nodes")
+	p.Data = plan
+	s.render(w, r, "plan", p)
+}
+
 func (s *Server) nodeApply(w http.ResponseWriter, r *http.Request) {
 	if !s.requireWrite(w, r) {
 		return
 	}
-	if err := r.ParseForm(); err != nil {
-		writePlain(w, http.StatusBadRequest, "invalid form")
+	id := r.PathValue("id")
+	if !s.liveApply {
+		writePlain(w, http.StatusNotImplemented, "Live apply is not enabled on this controller.")
 		return
 	}
-	id := r.PathValue("id")
-	dry := r.FormValue("dry_run") != "0" && r.FormValue("dry_run") != "false"
-	res, err := s.api(r).Apply(r.Context(), id, dry)
+	res, err := s.api(r).Apply(r.Context(), id, false)
 	if err != nil {
 		if hx(r) {
-			writePlain(w, http.StatusBadRequest, err.Error())
+			writePlain(w, http.StatusBadRequest, s.apiErr(err))
 			return
 		}
-		s.flash(r, "", err.Error())
+		s.flash(r, "", s.apiErr(err))
 		s.redirect(w, r, "/nodes/"+id)
 		return
 	}
@@ -63,7 +84,7 @@ func (s *Server) nodeFailback(w http.ResponseWriter, r *http.Request) {
 		s.redirect(w, r, "/nodes/"+id)
 		return
 	}
-	s.flash(r, "failback intent recorded", "")
+	s.flash(r, "failback requested", "")
 	s.redirect(w, r, "/nodes/"+id)
 }
 
@@ -107,7 +128,7 @@ func (s *Server) backendUpdate(w http.ResponseWriter, r *http.Request) {
 		NodeID:  model.ID(r.FormValue("node_id")),
 		Address: r.FormValue("address"),
 	}
-	if _, err := s.api(r).UpdateBackend(r.Context(), b); err != nil {
+	if _, err := s.api(r).PatchBackend(r.Context(), b); err != nil {
 		s.flash(r, "", err.Error())
 		s.redirect(w, r, "/backends/"+id)
 		return
@@ -191,16 +212,24 @@ func (s *Server) mappingUpdate(w http.ResponseWriter, r *http.Request) {
 	pub, _ := strconv.Atoi(r.FormValue("public_port"))
 	bp, _ := strconv.Atoi(r.FormValue("backend_port"))
 	enabled := r.FormValue("enabled") != "false" && r.FormValue("enabled") != "0"
-	m := model.PortMapping{
-		ID:          model.ID(id),
-		NodeID:      model.ID(r.FormValue("node_id")),
-		BackendID:   model.ID(r.FormValue("backend_id")),
-		Protocol:    model.Protocol(r.FormValue("protocol")),
-		PublicPort:  pub,
-		BackendPort: bp,
-		Enabled:     enabled,
+	nodeID := model.ID(r.FormValue("node_id"))
+	backendID := model.ID(r.FormValue("backend_id"))
+	proto := model.Protocol(r.FormValue("protocol"))
+	patch := model.MappingPatch{
+		Enabled:     &enabled,
+		PublicPort:  &pub,
+		BackendPort: &bp,
 	}
-	if _, err := s.api(r).UpdateMapping(r.Context(), m); err != nil {
+	if nodeID != "" {
+		patch.NodeID = &nodeID
+	}
+	if backendID != "" {
+		patch.BackendID = &backendID
+	}
+	if proto != "" {
+		patch.Protocol = &proto
+	}
+	if _, err := s.api(r).PatchMapping(r.Context(), id, patch); err != nil {
 		s.flash(r, "", err.Error())
 		s.redirect(w, r, "/mappings")
 		return
@@ -221,7 +250,7 @@ func (s *Server) mappingPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	enabled := raw == "true" || raw == "1" || raw == "on"
-	if _, err := s.api(r).PatchMapping(r.Context(), id, enabled); err != nil {
+	if _, err := s.api(r).PatchMapping(r.Context(), id, model.MappingPatch{Enabled: &enabled}); err != nil {
 		if hx(r) {
 			writePlain(w, http.StatusBadRequest, err.Error())
 			return
@@ -290,7 +319,7 @@ func (s *Server) sniUpdate(w http.ResponseWriter, r *http.Request) {
 		Listen:  firstNonEmpty(r.FormValue("listen"), ":443"),
 		Matches: parseSniMatches(r.FormValue("default_backend"), r.FormValue("matches")),
 	}
-	if _, err := s.api(r).UpdateSniRoute(r.Context(), route); err != nil {
+	if _, err := s.api(r).PatchSniRoute(r.Context(), route); err != nil {
 		s.flash(r, "", err.Error())
 		s.redirect(w, r, "/sni-routes/"+id)
 		return

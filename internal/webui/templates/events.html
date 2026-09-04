@@ -2,7 +2,7 @@
 {{template "header" .}}
 {{$f := .Data.Filter}}
 <h1>Events</h1>
-<p class="lead">Audit log from the controller API. Filters are query parameters — bookmarkable, no client state.</p>
+<p class="lead">Audit log from <code>GET /api/v1/events</code>. Filters are query parameters (<code>node</code>, <code>backend</code>, <code>since</code>, <code>until</code>, <code>action</code>) — bookmarkable, no client state.</p>
 
 <form class="filter" method="get" action="/events">
   <label>Node
@@ -21,8 +21,9 @@
       {{end}}
     </select>
   </label>
-  <label>From <input type="date" name="from" value="{{$f.From}}"></label>
-  <label>To <input type="date" name="to" value="{{$f.To}}"></label>
+  <label>Since <input type="date" name="since" value="{{$f.Since}}"></label>
+  <label>Until <input type="date" name="until" value="{{$f.Until}}"></label>
+  <label>Action <input name="action" value="{{$f.Action}}" placeholder="create"></label>
   <button type="submit">Filter</button>
   <a class="btn secondary" href="/events">Reset</a>
 </form>

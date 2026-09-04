@@ -85,14 +85,15 @@ func run() error {
 	}
 
 	met := metrics.New()
-	srv := api.New(cfg, st, a, log, api.Capabilities{LiveApply: false, Failback: true, Metrics: met.Handler()})
+	cap := api.Capabilities{LiveApply: false, Failback: true, Metrics: met.Handler()}
+	srv := api.New(cfg, st, a, log, cap)
 	srv.SetReady(true)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	if strings.TrimSpace(*uiListen) != "" {
-		ui, err := webui.New(webui.Config{Listen: *uiListen, API: srv.Handler(), Log: log})
+		ui, err := webui.New(webui.Config{Listen: *uiListen, API: srv.Handler(), Log: log, LiveApply: cap.LiveApply})
 		if err != nil {
 			return fmt.Errorf("web ui: %w", err)
 		}

@@ -26,6 +26,7 @@ type fakeAPI struct {
 	actual        map[string]*model.NodeActualState
 	plan          string
 	applyCalls    int
+	planCalls     int
 	failbackCalls int
 	patchCalls    int
 }
@@ -59,7 +60,7 @@ func (f *fakeAPI) CreateBackend(_ context.Context, b model.Backend) (*model.Back
 	b.ID = "b-new"
 	return &b, nil
 }
-func (f *fakeAPI) UpdateBackend(_ context.Context, b model.Backend) (*model.Backend, error) {
+func (f *fakeAPI) PatchBackend(_ context.Context, b model.Backend) (*model.Backend, error) {
 	return &b, nil
 }
 func (f *fakeAPI) ListTunnels(context.Context) ([]model.Tunnel, error) { return f.tunnels, nil }
@@ -73,14 +74,13 @@ func (f *fakeAPI) CreateMapping(_ context.Context, m model.PortMapping) (*model.
 	m.Enabled = true
 	return &m, nil
 }
-func (f *fakeAPI) UpdateMapping(_ context.Context, m model.PortMapping) (*model.PortMapping, error) {
-	return &m, nil
-}
-func (f *fakeAPI) PatchMapping(_ context.Context, id string, enabled bool) (*model.PortMapping, error) {
+func (f *fakeAPI) PatchMapping(_ context.Context, id string, patch model.MappingPatch) (*model.PortMapping, error) {
 	f.patchCalls++
 	for i := range f.mappings {
 		if string(f.mappings[i].ID) == id {
-			f.mappings[i].Enabled = enabled
+			if patch.Enabled != nil {
+				f.mappings[i].Enabled = *patch.Enabled
+			}
 			return &f.mappings[i], nil
 		}
 	}
@@ -100,7 +100,7 @@ func (f *fakeAPI) CreateSniRoute(_ context.Context, r model.SniRoute) (*model.Sn
 	r.ID = "s-new"
 	return &r, nil
 }
-func (f *fakeAPI) UpdateSniRoute(_ context.Context, r model.SniRoute) (*model.SniRoute, error) {
+func (f *fakeAPI) PatchSniRoute(_ context.Context, r model.SniRoute) (*model.SniRoute, error) {
 	return &r, nil
 }
 func (f *fakeAPI) DesiredState(_ context.Context, nodeID string) (*model.DesiredState, error) {
@@ -119,6 +119,10 @@ func (f *fakeAPI) GetActualState(_ context.Context, nodeID string) (*model.NodeA
 	}
 	return &model.NodeActualState{}, nil
 }
+func (f *fakeAPI) Plan(_ context.Context, _ string) (*model.PlanView, error) {
+	f.planCalls++
+	return &model.PlanView{Plan: f.plan}, nil
+}
 func (f *fakeAPI) Apply(context.Context, string, bool) (*model.ApplyResult, error) {
 	f.applyCalls++
 	return &model.ApplyResult{DryRun: true, Plan: f.plan}, nil
@@ -127,7 +131,7 @@ func (f *fakeAPI) Failback(context.Context, string, string) error {
 	f.failbackCalls++
 	return nil
 }
-func (f *fakeAPI) ListAudit(context.Context, string) ([]model.AuditEvent, error) {
+func (f *fakeAPI) ListEvents(context.Context, string) ([]model.AuditEvent, error) {
 	return f.audit, nil
 }
 
@@ -244,6 +248,21 @@ func TestRenderPages(t *testing.T) {
 	if !strings.Contains(detail, "ADD:") {
 		t.Fatalf("node detail missing plan: %s", detail)
 	}
+	if !strings.Contains(detail, "Plan preview") {
+		t.Fatal("node detail missing plan preview")
+	}
+	if !strings.Contains(detail, "Live apply is not enabled on this controller.") {
+		t.Fatal("operator UI must explain that live apply is disabled")
+	}
+	if strings.Contains(detail, `hx-post="/nodes/n1/apply"`) {
+		t.Fatal("Apply must not be enabled while LiveApply is false")
+	}
+	if strings.Contains(detail, "fail-forward") {
+		t.Fatal("user-facing failback must not say fail-forward")
+	}
+	if fake.planCalls == 0 {
+		t.Fatal("node detail must load the plan through the API")
+	}
 }
 
 func TestReadonlyWriteRejected(t *testing.T) {
@@ -254,15 +273,30 @@ func TestReadonlyWriteRejected(t *testing.T) {
 	if pages.Code != 200 {
 		t.Fatalf("readonly detail %d %s", pages.Code, pages.Body.String())
 	}
-	if strings.Contains(pages.Body.String(), `hx-post="/nodes/n1/apply"`) {
+	body := pages.Body.String()
+	if strings.Contains(body, `hx-post="/nodes/n1/apply"`) {
 		t.Fatal("readonly must not see apply controls")
 	}
-	before := fake.applyCalls
-	rec := do(t, s, http.MethodPost, "/nodes/n1/apply", cookie, url.Values{"dry_run": {"true"}})
+	if !strings.Contains(body, "Plan preview") {
+		t.Fatal("readonly must still see plan preview")
+	}
+	beforeApply := fake.applyCalls
+	beforePlan := fake.planCalls
+	rec := do(t, s, http.MethodGet, "/nodes/n1/plan", cookie, nil)
+	if rec.Code != 200 {
+		t.Fatalf("readonly plan %d %s", rec.Code, rec.Body.String())
+	}
+	if fake.planCalls == beforePlan {
+		t.Fatal("readonly plan preview must call GET /plan")
+	}
+	if fake.applyCalls != beforeApply {
+		t.Fatal("plan preview must not call apply")
+	}
+	rec = do(t, s, http.MethodPost, "/nodes/n1/apply", cookie, nil)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("expected 403, got %d %s", rec.Code, rec.Body.String())
 	}
-	if fake.applyCalls != before {
+	if fake.applyCalls != beforeApply {
 		t.Fatal("readonly apply must not call API")
 	}
 	rec = do(t, s, http.MethodPatch, "/mappings/m1", cookie, url.Values{"enabled": {"false"}})
@@ -322,5 +356,43 @@ func TestStaticAssets(t *testing.T) {
 	rec = do(t, s, http.MethodGet, "/static/htmx.min.js", nil, nil)
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "htmx") {
 		t.Fatalf("htmx %d", rec.Code)
+	}
+}
+
+func TestLiveApplyDisabledRejectsApply(t *testing.T) {
+	fake := sampleFake()
+	s := testUI(t, fake)
+	cookie := sessionCookie(t, s, "operator", model.RoleOperator, "sekrit-token-value")
+	before := fake.applyCalls
+	rec := do(t, s, http.MethodPost, "/nodes/n1/apply", cookie, nil)
+	if rec.Code != http.StatusNotImplemented {
+		t.Fatalf("expected 501, got %d %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Live apply is not enabled on this controller.") {
+		t.Fatalf("missing explanation: %s", rec.Body.String())
+	}
+	if fake.applyCalls != before {
+		t.Fatal("disabled live apply must not call POST /apply")
+	}
+	rec = do(t, s, http.MethodGet, "/nodes/n1/plan", cookie, nil)
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "ADD:") {
+		t.Fatalf("plan preview %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestEventsFilterQueryParams(t *testing.T) {
+	fake := sampleFake()
+	s := testUI(t, fake)
+	cookie := sessionCookie(t, s, "operator", model.RoleOperator, "sekrit-token-value")
+	rec := do(t, s, http.MethodGet, "/events?node=ru-edge-1&since=2026-09-01&until=2026-09-04&action=create", cookie, nil)
+	if rec.Code != 200 {
+		t.Fatalf("events %d %s", rec.Code, rec.Body.String())
+	}
+	html := rec.Body.String()
+	if strings.Contains(html, `name="from"`) || strings.Contains(html, `name="to"`) {
+		t.Fatal("events UI must use since/until, not from/to")
+	}
+	if !strings.Contains(html, `name="since"`) || !strings.Contains(html, `name="until"`) || !strings.Contains(html, `name="action"`) {
+		t.Fatal("events UI missing canonical filters")
 	}
 }
