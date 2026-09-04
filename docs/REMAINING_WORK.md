@@ -14,7 +14,7 @@ Stages 1–5 of the staged MVP are in tree. The items below are intentionally no
 - No combined “new backend + tunnel + mappings” wizard; use the existing sequential API/CLI (or the separate forms in the Web UI).
 - Installer does not install WireGuard/HAProxy packages; it only checks a subset and refuses to overwrite HAProxy config.
 - Windows is a build/test host; the agent’s live path is Linux (`ip`, `wg`, `iptables`, `systemctl`).
-- Docker Compose runs the control plane. Live iptables/WG requires Linux + `network_mode: host` on the agent (`docker-compose.live.yml`). Host HAProxy reload is a path unit (`haproxy_reload: external`); SSH TUN systemd units are not started from the container. Native systemd agent is the production layout. Gate live overlay with `scripts/run-smoke-tests.sh` then `scripts/enable-live-overlay.sh`.
+- Docker Compose runs the control plane. Live iptables/WG requires Linux + `network_mode: host` on the agent (`docker-compose.live.yml`). Host HAProxy reload is a path unit (`haproxy_reload: external`); SSH TUN systemd units are not started from the container. Native systemd agent is the production layout. Gate live overlay with `scripts/run-smoke-tests.sh` then `scripts/enable-live-overlay.sh`. GHCR images: `docs/DOCKER.md`.
 
 ## Safest next step
 

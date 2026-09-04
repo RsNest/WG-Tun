@@ -166,3 +166,16 @@ While `LiveApply` is false, the Apply control is disabled and the page shows: "L
 HTML `GET /events` is the operator page. It calls `GET /api/v1/events` with `node`, `backend`, `since`, `until`, and `action`.
 
 Vendored assets (no CDN): HTMX 2.0.4 (`0BSD`) and a handwritten `app.css`.
+
+## Build and distribution
+
+```
+GitHub
+  -> GitHub Actions
+  -> Docker Buildx (linux/amd64)
+  -> GHCR (ghcr.io/rsnest/wg-tun-{controller,agent,proxctl})
+  -> explicit operator deployment (`PROXYCTL_VERSION=sha-…` or `v…`)
+```
+
+Production and lab runtime hosts **pull images**. They do not compile Go. Native host/systemd integration remains required for HAProxy reload and SSH TUN units; the agent container does not mount the systemd control socket and does not replace those host units. See `docs/DOCKER.md`.
+

@@ -14,6 +14,17 @@ Stages 1–5 of the staged MVP are implemented. See `docs/ARCHITECTURE.md` and `
 
 ## Build
 
+Canonical path (Docker Engine + Buildx, **no host Go**):
+
+```bash
+docker build --target test .
+docker build --target controller -t ghcr.io/rsnest/wg-tun-controller:local .
+docker build --target agent -t ghcr.io/rsnest/wg-tun-agent:local .
+docker build --target proxctl -t ghcr.io/rsnest/wg-tun-proxctl:local .
+```
+
+Optional host Go (not required for CI or release artifacts):
+
 ```bash
 go fmt ./...
 go vet ./...
@@ -21,17 +32,6 @@ go test ./...
 go build -o bin/proxyctl-controller ./cmd/controller
 go build -o bin/proxyctl-agent ./cmd/agent
 go build -o bin/proxctl ./cmd/proxctl
-```
-
-On Windows PowerShell:
-
-```powershell
-go fmt ./...
-go vet ./...
-go test ./...
-go build -o bin/proxyctl-controller.exe ./cmd/controller
-go build -o bin/proxyctl-agent.exe ./cmd/agent
-go build -o bin/proxctl.exe ./cmd/proxctl
 ```
 
 ## Run locally (lab)
@@ -104,10 +104,12 @@ The installer will not overwrite an existing HAProxy config or an existing proxy
 
 ## Docker
 
+Images: `ghcr.io/rsnest/wg-tun-controller`, `ghcr.io/rsnest/wg-tun-agent`, `ghcr.io/rsnest/wg-tun-proxctl` (linux/amd64). CI publishes `sha-<short>` and `main` on pushes to `main`, plus `v*` on Git tags. Deploy with `PROXYCTL_VERSION=sha-…` (not `latest`).
+
 ```bash
 docker compose up -d --build
 docker compose --profile cli run --rm proxctl apply --node ru-edge-1 --dry-run
 ```
 
-Control plane (API, SQLite, agent dry-run) runs in Compose. Live overlay on a disposable Linux VM: `sudo bash scripts/run-smoke-tests.sh` then `sudo bash scripts/enable-live-overlay.sh`. See `docs/OPERATIONS.md` and `docs/DOCKER.md`.
+Release pull: `docs/DOCKER.md`. Live overlay: `sudo bash scripts/run-smoke-tests.sh` then `sudo bash scripts/enable-live-overlay.sh`.
 

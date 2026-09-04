@@ -123,8 +123,10 @@ The only supported way to start the host-network agent after smoke tests:
 
 ```bash
 bash scripts/enable-live-overlay.sh
-# or, if you already minted an agent token:
-PROXYCTL_AGENT_TOKEN='...' bash scripts/enable-live-overlay.sh
+# GHCR instead of --build (smoke gates unchanged):
+# env PROXYCTL_VERSION=sha-abcdef1 bash scripts/enable-live-overlay.sh
+# or, if you already minted an agent token (do not paste the value into chat/docs):
+# PROXYCTL_AGENT_TOKEN='...' bash scripts/enable-live-overlay.sh
 ```
 
 The script refuses to start if:
@@ -135,4 +137,33 @@ The script refuses to start if:
 - `/api/v1/whoami` reports a role other than `agent`
 
 It mints an **agent-role** token via `proxctl token add --role agent --out-file` (operator bootstrap is only used to mint). The secret is written to `/etc/proxyctl/agent.token` which is created as `0600 root:root` *before* any bytes are written; the value is never printed to stdout, journal, or the smoke stamp. `dry_run_only: false` is **not** automated: after you have read `docker compose … logs -f agent`, edit `configs/docker-agent.live.yaml` by hand and recreate the agent container.
+
+## Image deploy, update, rollback
+
+Runtime hosts pull `ghcr.io/rsnest/wg-tun-*`. They do not install Go. Pin `PROXYCTL_VERSION` to `sha-<short>` or a `v*` tag. Do not deploy `main` as the rollback handle.
+
+Controller:
+
+```bash
+export PROXYCTL_VERSION=sha-abcdef1
+docker compose -f deploy/compose/controller.yml pull
+docker compose -f deploy/compose/controller.yml up -d
+```
+
+Record the running image before updating:
+
+```bash
+docker inspect --format '{{.Image}} {{index .RepoDigests 0}}' "$(docker compose -f deploy/compose/controller.yml ps -q controller)"
+```
+
+Update is the same commands with a newer SHA. Rollback is the previous SHA:
+
+```bash
+export PROXYCTL_VERSION=sha-1234567
+docker compose -f deploy/compose/controller.yml pull
+docker compose -f deploy/compose/controller.yml up -d
+```
+
+Publication of new images is automatic on `main` / `v*` tags. Replacing a live agent is always a human `compose pull` + `up -d` (or recreate). See `docs/DOCKER.md`.
+
 
