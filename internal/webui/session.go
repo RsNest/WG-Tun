@@ -24,6 +24,7 @@ type session struct {
 	Token       string
 	UserID      model.ID
 	Name        string
+	DisplayName string
 	Role        model.Role
 	Locale      string
 	MFAPending  bool

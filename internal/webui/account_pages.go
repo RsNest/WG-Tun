@@ -29,12 +29,26 @@ func (s *Server) renderUsers(w http.ResponseWriter, r *http.Request, form map[st
 	if form == nil {
 		form = emptyForm()
 	}
+	showCreate := queryNew(r) || (formErr != "" && queryID(r) == "")
+	selectedID := queryID(r)
+	var selected *model.User
+	if selectedID != "" && !showCreate {
+		for i := range users {
+			if string(users[i].ID) == selectedID {
+				selected = &users[i]
+				break
+			}
+		}
+	}
 	p := s.pageBase(r, i18n.T(s.locale(r), "users.title"), "users")
 	p.Data = map[string]any{
-		"Users":     users,
-		"Tokens":    tokens,
-		"Form":      form,
-		"FormError": formErr,
+		"Users":      users,
+		"Tokens":     tokens,
+		"Form":       form,
+		"FormError":  formErr,
+		"ShowCreate": showCreate,
+		"SelectedID": selectedID,
+		"Selected":   selected,
 	}
 	s.render(w, r, "users", p)
 }
@@ -88,7 +102,7 @@ func (s *Server) userUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.flash(r, "flash.user_updated", "")
-	s.redirect(w, r, "/users")
+	s.redirect(w, r, "/users?id="+string(id))
 }
 
 func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request) {
@@ -109,8 +123,23 @@ func (s *Server) renderSettings(w http.ResponseWriter, r *http.Request, extra ma
 			data["User"] = u
 		}
 	}
+	data["Tab"] = settingsTab(r, extra)
 	p.Data = data
 	s.render(w, r, "settings", p)
+}
+
+func settingsTab(r *http.Request, extra map[string]any) string {
+	if extra != nil {
+		if extra["TOTP"] != nil || extra["Recovery"] != nil {
+			return "security"
+		}
+	}
+	switch r.URL.Query().Get("tab") {
+	case "security", "appearance", "general":
+		return r.URL.Query().Get("tab")
+	default:
+		return "general"
+	}
 }
 
 func (s *Server) settingsPassword(w http.ResponseWriter, r *http.Request) {
@@ -126,7 +155,7 @@ func (s *Server) settingsPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.flash(r, "flash.password_changed", "")
-	s.redirect(w, r, "/settings")
+	s.redirect(w, r, "/settings?tab=security")
 }
 
 func (s *Server) settingsTOTPBegin(w http.ResponseWriter, r *http.Request) {
@@ -170,7 +199,7 @@ func (s *Server) settingsTOTPDisable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.flash(r, "flash.totp_disabled", "")
-	s.redirect(w, r, "/settings")
+	s.redirect(w, r, "/settings?tab=security")
 }
 
 func (s *Server) settingsRecovery(w http.ResponseWriter, r *http.Request) {

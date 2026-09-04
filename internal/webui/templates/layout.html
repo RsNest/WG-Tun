@@ -9,7 +9,7 @@
   <script src="/static/htmx.min.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
-<body
+<body class="is-app{{if .NavCollapsed}} nav-collapsed{{end}}"
   data-i18n-refresh-fail="{{.Tr "js.refresh_failed"}}"
   data-i18n-no-response="{{.Tr "js.controller_no_response"}}"
   data-i18n-request-failed="{{.Tr "js.request_failed"}}"
@@ -18,57 +18,108 @@
   data-i18n-not-found="{{.Tr "js.not_found"}}"
   data-i18n-conflict="{{.Tr "js.conflict"}}"
   data-i18n-validation="{{.Tr "js.validation"}}"
-  data-i18n-controller="{{.Tr "js.controller_error"}}">
+  data-i18n-controller="{{.Tr "js.controller_error"}}"
+  data-i18n-copied="{{.Tr "action.copied"}}">
+{{template "icons"}}
 <a class="skip" href="#main">{{.Tr "nav.skip"}}</a>
 <div class="app-shell">
   {{if .Principal}}
   <aside class="sidebar" aria-label="{{.Tr "nav.group.overview"}}">
-    <div class="brand"><a href="/">proxyctl</a></div>
+    <div class="brand-row">
+      <div class="brand"><a href="/"><span class="brand-name">proxyctl</span></a></div>
+      <button type="button" class="nav-toggle" id="nav-toggle"
+        aria-expanded="{{if .NavCollapsed}}false{{else}}true{{end}}"
+        data-label-collapse="{{.Tr "nav.collapse"}}"
+        data-label-expand="{{.Tr "nav.expand"}}"
+        aria-label="{{if .NavCollapsed}}{{.Tr "nav.expand"}}{{else}}{{.Tr "nav.collapse"}}{{end}}"
+        title="{{if .NavCollapsed}}{{.Tr "nav.expand"}}{{else}}{{.Tr "nav.collapse"}}{{end}}">
+        <svg class="icon" aria-hidden="true"><use href="#i-menu"/></svg>
+      </button>
+    </div>
     <nav class="side-nav">
       <div class="nav-group">
         <div class="nav-group-label">{{.Tr "nav.group.overview"}}</div>
-        <a href="/" {{if eq .Nav "dashboard"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.dashboard"}}</a>
+        <a href="/" title="{{.Tr "nav.dashboard"}}" {{if eq .Nav "dashboard"}}class="active" aria-current="page"{{end}}>
+          <svg class="icon" aria-hidden="true"><use href="#i-dash"/></svg><span class="nav-label">{{.Tr "nav.dashboard"}}</span>
+        </a>
       </div>
       <div class="nav-group">
         <div class="nav-group-label">{{.Tr "nav.group.infrastructure"}}</div>
-        <a href="/nodes" {{if eq .Nav "nodes"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.entry_nodes"}}</a>
-        <a href="/backends" {{if eq .Nav "backends"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.backends"}}</a>
-        <a href="/tunnels" {{if eq .Nav "tunnels"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.tunnels"}}</a>
-        <a href="/mappings" {{if eq .Nav "mappings"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.mappings"}}</a>
-        <a href="/sni-routes" {{if eq .Nav "sni"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.sni_routes"}}</a>
+        <a href="/nodes" title="{{.Tr "nav.entry_nodes"}}" {{if eq .Nav "nodes"}}class="active" aria-current="page"{{end}}>
+          <svg class="icon" aria-hidden="true"><use href="#i-nodes"/></svg><span class="nav-label">{{.Tr "nav.entry_nodes"}}</span>
+        </a>
+        <a href="/backends" title="{{.Tr "nav.backends"}}" {{if eq .Nav "backends"}}class="active" aria-current="page"{{end}}>
+          <svg class="icon" aria-hidden="true"><use href="#i-backends"/></svg><span class="nav-label">{{.Tr "nav.backends"}}</span>
+        </a>
+        <a href="/tunnels" title="{{.Tr "nav.tunnels"}}" {{if eq .Nav "tunnels"}}class="active" aria-current="page"{{end}}>
+          <svg class="icon" aria-hidden="true"><use href="#i-tunnels"/></svg><span class="nav-label">{{.Tr "nav.tunnels"}}</span>
+        </a>
+        <a href="/mappings" title="{{.Tr "nav.mappings"}}" {{if eq .Nav "mappings"}}class="active" aria-current="page"{{end}}>
+          <svg class="icon" aria-hidden="true"><use href="#i-map"/></svg><span class="nav-label">{{.Tr "nav.mappings"}}</span>
+        </a>
+        <a href="/sni-routes" title="{{.Tr "nav.sni_routes"}}" {{if eq .Nav "sni"}}class="active" aria-current="page"{{end}}>
+          <svg class="icon" aria-hidden="true"><use href="#i-sni"/></svg><span class="nav-label">{{.Tr "nav.sni_routes"}}</span>
+        </a>
       </div>
       <div class="nav-group">
         <div class="nav-group-label">{{.Tr "nav.group.monitoring"}}</div>
-        <a href="/events" {{if eq .Nav "events"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.events"}}</a>
+        <a href="/events" title="{{.Tr "nav.events"}}" {{if eq .Nav "events"}}class="active" aria-current="page"{{end}}>
+          <svg class="icon" aria-hidden="true"><use href="#i-events"/></svg><span class="nav-label">{{.Tr "nav.events"}}</span>
+        </a>
       </div>
       <div class="nav-group">
         <div class="nav-group-label">{{.Tr "nav.group.administration"}}</div>
-        {{if .CanAdmin}}<a href="/users" {{if eq .Nav "users"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.users"}}</a>{{end}}
-        <a href="/api-reference" {{if eq .Nav "apiref"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.api_reference"}}</a>
-        <a href="/settings" {{if eq .Nav "settings"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.settings"}}</a>
+        {{if .CanAdmin}}<a href="/users" title="{{.Tr "nav.users"}}" {{if eq .Nav "users"}}class="active" aria-current="page"{{end}}>
+          <svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span class="nav-label">{{.Tr "nav.users"}}</span>
+        </a>{{end}}
+        <a href="/api-reference" title="{{.Tr "nav.api_reference"}}" {{if eq .Nav "apiref"}}class="active" aria-current="page"{{end}}>
+          <svg class="icon" aria-hidden="true"><use href="#i-book"/></svg><span class="nav-label">{{.Tr "nav.api_reference"}}</span>
+        </a>
+        <a href="/settings" title="{{.Tr "nav.settings"}}" {{if eq .Nav "settings"}}class="active" aria-current="page"{{end}}>
+          <svg class="icon" aria-hidden="true"><use href="#i-gear"/></svg><span class="nav-label">{{.Tr "nav.settings"}}</span>
+        </a>
       </div>
     </nav>
   </aside>
   {{end}}
-  <div class="workspace">
-    <header class="topbar">
-      <div class="page-title">{{if .Title}}{{.Title}}{{end}}</div>
-      <div class="who">
+  <div class="shell-col">
+    <header class="global-bar">
+      <div class="crumb">
+        {{if .CrumbGroup}}{{.Tr .CrumbGroup}}<span class="crumb-sep">/</span>{{end}}{{if .CrumbPage}}<strong>{{.Tr .CrumbPage}}</strong>{{else if .Title}}<strong>{{.Title}}</strong>{{end}}
+      </div>
+      <div class="global-actions">
         <form class="lang-switch" method="post" action="/locale" hx-post="/locale" hx-swap="none">
           <input type="hidden" name="locale" value="{{if eq .Locale "ru"}}en{{else}}ru{{end}}">
-          <button class="secondary" type="submit">{{if eq .Locale "ru"}}{{.Tr "lang.en"}}{{else}}{{.Tr "lang.ru"}}{{end}}</button>
+          <button class="lang-mini" type="submit" title="{{if eq .Locale "ru"}}{{.Tr "lang.en"}}{{else}}{{.Tr "lang.ru"}}{{end}}">{{if eq .Locale "ru"}}EN{{else}}RU{{end}}</button>
         </form>
+        <a class="icon-btn" href="/api-reference" title="{{.Tr "nav.help"}}" aria-label="{{.Tr "nav.help"}}">
+          <svg class="icon" aria-hidden="true"><use href="#i-help"/></svg>
+        </a>
         {{if .Principal}}
-        <span class="badge role-{{.Principal.Role}}">{{.Tr (printf "role.%s" .Principal.Role)}}</span>
-        <span>{{.Principal.Name}}</span>
-        <form class="inline-form" method="post" action="/logout"><button class="secondary" type="submit">{{.Tr "nav.sign_out"}}</button></form>
+        <details class="account-menu">
+          <summary aria-label="{{.Tr "nav.account"}}">
+            <span>{{if .DisplayName}}{{.DisplayName}}{{else}}{{.Principal.Name}}{{end}}</span>
+            <span class="account-caret" aria-hidden="true">▾</span>
+          </summary>
+          <div class="account-panel">
+            <div class="account-meta">
+              <div class="dn">{{if .DisplayName}}{{.DisplayName}}{{else}}{{.Principal.Name}}{{end}}</div>
+              <div class="un">{{.Principal.Name}}</div>
+              <span class="rl role-{{.Principal.Role}}">{{.Tr (printf "role.%s" .Principal.Role)}}</span>
+            </div>
+            <a href="/settings?tab=general">{{.Tr "nav.my_account"}}</a>
+            <a href="/settings?tab=security">{{.Tr "nav.security"}}</a>
+            <a href="/settings?tab=appearance">{{.Tr "nav.language"}}</a>
+            <form method="post" action="/logout"><button class="menu-item" type="submit">{{.Tr "nav.sign_out"}}</button></form>
+          </div>
+        </details>
         {{end}}
       </div>
     </header>
-    <div id="hx-error" class="alert err" hidden role="status"></div>
-    {{if .FlashOK}}<div class="alert ok" role="status">{{.FlashOK}}</div>{{end}}
-    {{if .FlashErr}}<div class="alert err" role="alert">{{.FlashErr}}</div>{{end}}
-    <main id="main">
+    <div id="hx-error" class="alert err flash-slot" hidden role="status"></div>
+    {{if .FlashOK}}<div class="alert ok flash-slot" role="status">{{.FlashOK}}</div>{{end}}
+    {{if .FlashErr}}<div class="alert err flash-slot" role="alert">{{.FlashErr}}</div>{{end}}
+    <main id="main" class="shell-main">
 {{end}}
 
 {{define "footer"}}
@@ -77,6 +128,29 @@
 </div>
 </body>
 </html>
+{{end}}
+
+{{define "icons"}}
+<svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-dash" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="5" rx="1"/><rect x="13" y="10" width="8" height="11" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/></symbol>
+  <symbol id="i-nodes" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="5" rx="1"/><rect x="4" y="10.5" width="16" height="5" rx="1"/><rect x="4" y="17" width="16" height="4" rx="1"/><circle cx="7" cy="6.5" r="0.7" fill="currentColor" stroke="none"/><circle cx="7" cy="13" r="0.7" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-backends" viewBox="0 0 24 24"><path d="M12 3 20 7.5 12 12 4 7.5 12 3z"/><path d="M20 7.5V16.5L12 21V12"/><path d="M4 7.5V16.5L12 21"/></symbol>
+  <symbol id="i-tunnels" viewBox="0 0 24 24"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="12" r="3"/><path d="M9 12h6"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M8 6H5v12h3"/><path d="M16 6h3v12h-3"/><path d="M8 12h8"/><path d="M14 9l3 3-3 3"/><path d="M10 9l-3 3 3 3"/></symbol>
+  <symbol id="i-sni" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M4 12h16"/><path d="M12 4c2.5 3 2.5 13 0 16"/><path d="M12 4c-2.5 3-2.5 13 0 16"/></symbol>
+  <symbol id="i-events" viewBox="0 0 24 24"><path d="M5 6h14"/><path d="M5 12h14"/><path d="M5 18h10"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M4 19c.5-3 2.5-5 5-5s4.5 2 5 5"/><circle cx="16.5" cy="9" r="2.2"/><path d="M15 19c.3-2 1.5-3.5 3.5-3.5 1 0 1.8.3 2.5.9"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M6 5h11a2 2 0 0 1 2 2v12H8a2 2 0 0 0-2 2V5z"/><path d="M6 19a2 2 0 0 1 2-2h13"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 4v2.2M12 17.8V20M4 12h2.2M17.8 12H20M6.3 6.3l1.6 1.6M16.1 16.1l1.6 1.6M17.7 6.3l-1.6 1.6M7.9 16.1l-1.6 1.6"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.1.9-1.1 1.8"/><circle cx="12" cy="16.5" r="0.7" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.2-5.5"/><path d="M20 5v5h-5"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="1"/><path d="M5 16V5h11"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></symbol>
+</svg>
 {{end}}
 
 {{define "login"}}
@@ -203,11 +277,17 @@
 
 {{define "error"}}
 {{template "header" .}}
-<h1>{{if .Data.Title}}{{.Data.Title}}{{else}}{{.Tr "error.something_wrong"}}{{end}}</h1>
+<div class="page-toolbar">
+  <div class="page-toolbar-text">
+    <h1>{{if .Data.Title}}{{.Data.Title}}{{else}}{{.Tr "error.something_wrong"}}{{end}}</h1>
+  </div>
+</div>
+<div class="workspace"><div class="workspace-main">
 <div class="alert {{if .Data.Kind}}{{.Data.Kind}}{{else}}err{{end}}" role="alert">
   {{if .Data.Message}}{{.Data.Message}}{{else if .FlashErr}}{{.FlashErr}}{{else}}{{.Tr "error.api_failed"}}{{end}}
 </div>
 <p class="lead"><a href="/">{{.Tr "error.back"}}</a></p>
+</div></div>
 {{template "footer" .}}
 {{end}}
 
@@ -233,9 +313,12 @@
 </div>
 {{end}}
 
-{{define "status-chip"}}
-<span class="status-chip">
-  <span class="badge {{.StatusClass}}">{{$.Tr (printf "status.%s" .Status)}}</span>
-  {{if .ReasonKey}}<span class="status-reason">{{$.Tr .ReasonKey}}</span>{{end}}
+{{define "status-dot"}}
+<span class="st {{.Class}}">
+  <span class="st-line">
+    <span class="st-dot" aria-hidden="true"></span>
+    <span>{{.Label}}</span>
+  </span>
+  {{if .Reason}}<span class="st-reason">{{.Reason}}</span>{{end}}
 </span>
 {{end}}

@@ -1,62 +1,93 @@
 {{define "dashboard"}}
 {{template "header" .}}
-<h1>{{.Tr "dash.title"}}</h1>
-<p class="lead">{{.Tr "dash.lead"}}</p>
-<div class="kpi-row">
-  <div class="kpi">
-    <div class="kpi-label">{{.Tr "dash.kpi_entry"}}</div>
-    <div class="kpi-value">{{.Data.EntryCount}}</div>
+<div class="page-toolbar">
+  <div class="page-toolbar-text">
+    <h1>{{.Tr "dash.title"}}</h1>
+    <p class="lead">{{.Tr "dash.lead"}}</p>
+  </div>
+  <div class="page-toolbar-actions">
+    <a class="btn secondary" href="/">{{.Tr "action.refresh"}}</a>
   </div>
 </div>
+<div class="workspace"><div class="workspace-main">
 <div id="dash-refresh-error" class="alert warning" hidden role="status">{{.Tr "dash.refresh_failed"}}</div>
 {{template "dashboard-cards" .}}
-<section class="panel" aria-labelledby="dash-events-h">
-  <h2 id="dash-events-h">{{.Tr "dash.recent_events"}}</h2>
+</div></div>
+{{template "footer" .}}
+{{end}}
+
+{{define "dashboard-cards"}}
+<div id="node-cards" hx-get="/" hx-trigger="every 8s" hx-select="#node-cards" hx-target="this" hx-swap="outerHTML" hx-sync="this:replace">
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">{{.Tr "dash.kpi_entry"}}</div>
+      <div class="kpi-value">{{.Data.EntryCount}}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">{{.Tr "dash.kpi_healthy"}}</div>
+      <div class="kpi-value">{{.Data.HealthyCount}}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">{{.Tr "dash.kpi_degraded"}}</div>
+      <div class="kpi-value">{{.Data.DegradedCount}}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">{{.Tr "dash.kpi_mappings"}}</div>
+      <div class="kpi-value">{{.Data.MappingCount}}</div>
+    </div>
+  </div>
+  <div class="section-h">
+    <h2>{{.Tr "dash.infra"}}</h2>
+  </div>
+  {{if not .Data.Cards}}
+    <p class="empty">{{$.Tr "dash.empty"}}</p>
+  {{else}}
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th data-sort>{{.Tr "field.name"}}</th>
+          <th data-sort>{{.Tr "field.public_ip"}}</th>
+          <th data-sort>{{.Tr "field.agent"}}</th>
+          <th data-sort>{{.Tr "field.transport"}}</th>
+          <th data-sort>{{.Tr "field.status"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{range .Data.Cards}}
+        <tr data-href="/nodes?id={{.ID}}" tabindex="0" data-status="{{.Status}}">
+          <td class="name-cell">{{.Name}}</td>
+          <td class="mono">{{dash .PublicIP}}</td>
+          <td>{{if .AgentReported}}{{$.Tr (printf "status.%s" .AgentStatus)}}{{else}}{{$.Tr "field.no_data"}}{{end}}</td>
+          <td class="transport">{{dash .Transport}}</td>
+          <td>{{template "status-dot" (dict "Class" .StatusClass "Label" ($.Tr (statusKey .Status)) "Reason" ($.Tr .ReasonKey))}}</td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
+  <div class="section-h">
+    <h2>{{.Tr "dash.recent_events"}}</h2>
+    <a href="/events">{{.Tr "dash.view_all"}}</a>
+  </div>
   {{if not .Data.Events}}<p class="empty">{{.Tr "events.empty"}}</p>{{else}}
   <div class="table-wrap">
   <table class="data">
-    <thead><tr><th>{{.Tr "field.time"}}</th><th>{{.Tr "field.actor"}}</th><th>{{.Tr "field.action"}}</th><th>{{.Tr "field.target"}}</th><th>{{.Tr "field.result"}}</th></tr></thead>
+    <thead><tr><th>{{.Tr "field.time"}}</th><th>{{.Tr "field.result"}}</th><th>{{.Tr "field.action"}}</th><th>{{.Tr "field.actor"}}</th><th>{{.Tr "field.target"}}</th></tr></thead>
     <tbody>
     {{range .Data.Events}}
       <tr>
         <td class="mono">{{.When}}</td>
-        <td>{{.Actor}}</td>
+        <td>{{if .Success}}<span class="result-ok">{{$.Tr "result.ok"}}</span>{{else}}<span class="result-err">{{$.Tr "result.error"}}</span>{{end}}</td>
         <td class="mono">{{.Action}}</td>
-        <td class="mono">{{.Target}}</td>
-        <td>{{if .Success}}<span class="badge status-healthy">{{$.Tr "result.ok"}}</span>{{else}}<span class="badge status-unhealthy">{{$.Tr "result.error"}}</span>{{end}}</td>
+        <td>{{.Actor}}</td>
+        <td class="mono cell-trunc">{{.Target}}</td>
       </tr>
     {{end}}
     </tbody>
   </table>
   </div>
-  {{end}}
-</section>
-{{template "footer" .}}
-{{end}}
-
-{{define "dashboard-cards"}}
-<div id="node-cards" class="cards" hx-get="/" hx-trigger="every 8s" hx-select="#node-cards" hx-target="this" hx-swap="outerHTML" hx-sync="this:replace">
-  {{if not .Data.Cards}}
-    <p class="empty-panel">{{$.Tr "dash.empty"}}</p>
-  {{else}}
-    {{range .Data.Cards}}
-    <article class="card card-{{.StatusClass}}">
-      <h2><a href="/nodes/{{.ID}}">{{.Name}}</a></h2>
-      <div class="ip">{{dash .PublicIP}}</div>
-      <p class="status-chip">
-        <span class="badge {{.StatusClass}}">{{$.Tr (printf "status.%s" .Status)}}</span>
-        {{if .Degraded}}<span class="badge status-degraded">{{$.Tr "status.degraded"}}</span>{{end}}
-      </p>
-      <p class="status-reason">{{$.Tr .ReasonKey}}</p>
-      <dl class="meta" style="margin-top:12px">
-        <dt>{{$.Tr "field.transport"}}</dt><dd class="transport">{{dash .Transport}}</dd>
-        <dt>{{$.Tr "field.agent"}}</dt><dd>{{$.Tr (printf "status.%s" .AgentStatus)}}</dd>
-        <dt>{{$.Tr "field.handshake"}}</dt><dd>{{dash .Handshake}}</dd>
-        <dt>{{$.Tr "field.last_reconcile"}}</dt><dd>{{dash .LastReconcile}}</dd>
-        <dt>{{$.Tr "field.active_mappings"}}</dt><dd>{{.MappingLabel}}</dd>
-      </dl>
-    </article>
-    {{end}}
   {{end}}
 </div>
 {{end}}

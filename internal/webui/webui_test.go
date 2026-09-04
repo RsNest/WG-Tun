@@ -339,7 +339,7 @@ func TestReadonlyWriteRejected(t *testing.T) {
 	if strings.Contains(body, "Run audited dry-run") || strings.Contains(body, `hx-post="/nodes/n1/dry-run"`) {
 		t.Fatal("readonly must not see audited dry-run")
 	}
-	if strings.Contains(body, "badge role-readonly") == false && !strings.Contains(body, "readonly") {
+	if strings.Contains(body, "badge role-readonly") == false && !strings.Contains(body, "readonly") && !strings.Contains(body, "role-readonly") {
 		t.Fatal("readonly role badge missing")
 	}
 	beforeApply := fake.applyCalls
@@ -754,7 +754,7 @@ func TestEventSecretsRedacted(t *testing.T) {
 func TestTunnelFormUsesKeyPathOnly(t *testing.T) {
 	s := testUI(t, sampleFake())
 	cookie := sessionCookie(t, s, "operator", model.RoleOperator, "tok")
-	body := do(t, s, http.MethodGet, "/tunnels", cookie, nil).Body.String()
+	body := do(t, s, http.MethodGet, "/tunnels?new=1", cookie, nil).Body.String()
 	if !strings.Contains(body, `name="private_key_path"`) {
 		t.Fatal("tunnel form must accept a key path")
 	}
@@ -837,6 +837,33 @@ func TestOperatorCannotOpenUsersPage(t *testing.T) {
 	rec := do(t, s, http.MethodGet, "/users", cookie, nil)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("expected 403, got %d", rec.Code)
+	}
+}
+
+func TestMasterDetailAndConsoleShell(t *testing.T) {
+	fake := sampleFake()
+	s := testUI(t, fake)
+	cookie := sessionCookie(t, s, "operator", model.RoleOperator, "tok")
+	nodes := do(t, s, http.MethodGet, "/nodes?id=n1", cookie, nil)
+	if nodes.Code != 200 {
+		t.Fatalf("nodes panel %d %s", nodes.Code, nodes.Body.String())
+	}
+	body := nodes.Body.String()
+	if !strings.Contains(body, `class="selected"`) {
+		t.Fatal("selected row missing")
+	}
+	if !strings.Contains(body, `class="detail-panel"`) {
+		t.Fatal("detail panel missing")
+	}
+	if !strings.Contains(body, "nav-toggle") || !strings.Contains(body, "page-toolbar") {
+		t.Fatal("console shell missing")
+	}
+	dash := do(t, s, http.MethodGet, "/", cookie, nil).Body.String()
+	if strings.Contains(dash, `class="cards"`) {
+		t.Fatal("dashboard must not use sparse node cards")
+	}
+	if !strings.Contains(dash, "Infrastructure status") && !strings.Contains(dash, "dash.infra") {
+		t.Fatal("dashboard missing infrastructure table heading")
 	}
 }
 

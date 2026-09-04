@@ -1,95 +1,155 @@
 {{define "tunnels"}}
 {{template "header" .}}
 {{$form := .Data.Form}}
-<h1>{{.Tr "tunnels.title"}}</h1>
-<p class="lead">{{.Tr "tunnels.lead"}}</p>
-{{if .Data.FormError}}<div class="alert validation" role="alert">{{$.Tr .Data.FormError}}</div>{{end}}
-
-<div class="panel">
-  {{if not .Data.Rows}}<p class="empty">{{.Tr "tunnels.empty"}}</p>{{else}}
-  <div class="table-wrap">
-  <table class="data">
-    <thead><tr><th>{{.Tr "field.type"}}</th><th>{{.Tr "field.node"}}</th><th>{{.Tr "field.backend"}}</th><th>{{.Tr "field.interface"}}</th><th>{{.Tr "field.handshake"}}</th><th>{{.Tr "field.rx"}}</th><th>{{.Tr "field.tx"}}</th><th>{{.Tr "field.status"}}</th></tr></thead>
-    <tbody>
-    {{range .Data.Rows}}
-      <tr>
-        <td class="mono">{{.Type}}</td>
-        <td>{{.Node}}</td>
-        <td>{{.Backend}}</td>
-        <td class="mono">{{dash .Interface}}<span class="cell-sub">{{dash .Endpoint}}</span></td>
-        <td class="mono">{{dash .Handshake}}</td>
-        <td class="mono">{{dash .Rx}}</td>
-        <td class="mono">{{dash .Tx}}</td>
-        <td>
-          <span class="badge {{.StatusClass}}">{{$.Tr (printf "status.%s" .Status)}}</span>
-          <span class="cell-sub">{{$.Tr .ReasonKey}}</span>
-        </td>
-      </tr>
-    {{end}}
-    </tbody>
-  </table>
+{{$sel := .Data.SelectedID}}
+<div class="page-toolbar">
+  <div class="page-toolbar-text">
+    <h1>{{.Tr "tunnels.title"}}</h1>
+    <p class="lead">{{.Tr "tunnels.lead"}}</p>
   </div>
+  <div class="page-toolbar-actions">
+    {{if and .CanWrite (not .Data.ShowCreate)}}<a class="btn" href="/tunnels?new=1"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>{{.Tr "tunnels.create"}}</a>{{end}}
+    <a class="btn secondary" href="/tunnels">{{.Tr "action.refresh"}}</a>
+  </div>
+</div>
+{{if .Data.FormError}}<div class="alert validation flash-slot" role="alert">{{$.Tr .Data.FormError}}</div>{{end}}
+<div class="workspace">
+  <div class="workspace-main">
+    <div class="filter-row" data-filter-table="tunnels-table">
+      <input type="search" data-filter-q placeholder="{{.Tr "ui.search"}}" aria-label="{{.Tr "ui.search"}}">
+      <select data-filter-status aria-label="{{.Tr "field.status"}}">
+        <option value="">{{.Tr "ui.status_all"}}</option>
+        <option value="healthy">{{.Tr "status.healthy"}}</option>
+        <option value="warning">{{.Tr "status.warning"}}</option>
+        <option value="unhealthy">{{.Tr "status.unreachable"}}</option>
+        <option value="unknown">{{.Tr "status.unknown"}}</option>
+      </select>
+    </div>
+    {{if not .Data.Rows}}<p class="empty">{{.Tr "tunnels.empty"}}</p>{{else}}
+    <div class="table-wrap">
+      <table class="data" id="tunnels-table">
+        <thead>
+          <tr>
+            <th data-sort>{{.Tr "field.status"}}</th>
+            <th data-sort>{{.Tr "field.node"}}</th>
+            <th data-sort>{{.Tr "field.backend"}}</th>
+            <th data-sort>{{.Tr "field.interface"}}</th>
+            <th data-sort>{{.Tr "field.handshake"}}</th>
+            <th data-sort>{{.Tr "field.rx"}}</th>
+            <th data-sort>{{.Tr "field.tx"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {{range .Data.Rows}}
+          <tr data-href="/tunnels?id={{.ID}}" tabindex="0" data-status="{{.Status}}" {{if eq .ID $sel}}class="selected"{{end}}>
+            <td>{{template "status-dot" (dict "Class" .StatusClass "Label" ($.Tr (statusKey .Status)) "Reason" "")}}</td>
+            <td>{{.Node}}</td>
+            <td>{{.Backend}}</td>
+            <td class="mono">{{dash .Interface}}</td>
+            <td class="mono">{{dash .Handshake}}</td>
+            <td class="mono">{{dash .Rx}}</td>
+            <td class="mono">{{dash .Tx}}</td>
+          </tr>
+        {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{end}}
+  </div>
+  {{if .Data.ShowCreate}}
+  <aside class="detail-panel" role="complementary">
+    <div class="panel-head">
+      <h2>{{.Tr "tunnels.create"}}</h2>
+      <a class="icon-btn" data-panel-close href="/tunnels" aria-label="{{.Tr "action.close"}}"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></a>
+    </div>
+    {{template "tunnel-create-form" .}}
+  </aside>
+  {{else if .Data.Selected}}
+  <aside class="detail-panel" role="complementary">
+    {{$t := .Data.Selected}}
+    <div class="panel-head">
+      <h2>{{$t.Interface}}</h2>
+      {{template "status-dot" (dict "Class" $t.StatusClass "Label" ($.Tr (statusKey $t.Status)) "Reason" ($.Tr $t.ReasonKey))}}
+      <a class="icon-btn" data-panel-close href="/tunnels" aria-label="{{.Tr "action.close"}}"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></a>
+    </div>
+    <dl class="meta">
+      <dt>{{.Tr "field.type"}}</dt><dd class="mono">{{$t.Type}}</dd>
+      <dt>{{.Tr "field.node"}}</dt><dd>{{$t.Node}}</dd>
+      <dt>{{.Tr "field.backend"}}</dt><dd>{{$t.Backend}}</dd>
+      <dt>{{.Tr "field.endpoint"}}</dt><dd class="mono">{{dash $t.Endpoint}}</dd>
+      <dt>{{.Tr "field.handshake"}}</dt><dd class="mono">{{dash $t.Handshake}}</dd>
+      <dt>{{.Tr "field.rx"}}</dt><dd class="mono">{{dash $t.Rx}}</dd>
+      <dt>{{.Tr "field.tx"}}</dt><dd class="mono">{{dash $t.Tx}}</dd>
+      <dt>{{.Tr "field.private_key_path"}}</dt><dd class="mono">{{dash $t.KeyPath}}</dd>
+      <dt>{{.Tr "field.id"}}</dt>
+      <dd>
+        <div class="id-row">
+          <code>{{$t.ID}}</code>
+          <button type="button" class="icon-btn" data-copy="{{$t.ID}}" aria-label="{{$.Tr "ui.id_copy"}}"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button>
+        </div>
+      </dd>
+    </dl>
+  </aside>
   {{end}}
 </div>
-
-{{if .CanWrite}}
-<div class="panel">
-  <h2>{{.Tr "tunnels.create"}}</h2>
-  <form method="post" action="/tunnels" class="form-grid" data-disable-on-submit autocomplete="off">
-    <div class="field">
-      <label for="tun-node">{{.Tr "field.node"}}</label>
-      <select id="tun-node" name="node_id" required>
-        {{range .Data.Nodes}}<option value="{{.ID}}" {{if eq (index $form "node_id") (printf "%s" .ID)}}selected{{end}}>{{.Name}}</option>{{end}}
-      </select>
-    </div>
-    <div class="field">
-      <label for="tun-backend">{{.Tr "field.backend"}}</label>
-      <select id="tun-backend" name="backend_id" required>
-        {{range .Data.Backends}}<option value="{{.ID}}" {{if eq (index $form "backend_id") (printf "%s" .ID)}}selected{{end}}>{{.Name}}</option>{{end}}
-      </select>
-    </div>
-    <div class="field">
-      <label for="tun-if">{{.Tr "field.interface"}}</label>
-      <input id="tun-if" name="interface_name" required placeholder="wg-a" value="{{index $form "interface_name"}}">
-    </div>
-    <div class="field">
-      <label for="tun-port">{{.Tr "field.listen_port"}}</label>
-      <input id="tun-port" name="listen_port" type="number" required value="{{if index $form "listen_port"}}{{index $form "listen_port"}}{{else}}51820{{end}}">
-    </div>
-    <div class="field">
-      <label for="tun-local">{{.Tr "field.local_overlay"}}</label>
-      <input id="tun-local" name="local_overlay_ip" required placeholder="10.200.1.1" value="{{index $form "local_overlay_ip"}}">
-    </div>
-    <div class="field">
-      <label for="tun-remote">{{.Tr "field.remote_overlay"}}</label>
-      <input id="tun-remote" name="remote_overlay_ip" required placeholder="10.200.1.2" value="{{index $form "remote_overlay_ip"}}">
-    </div>
-    <div class="field">
-      <label for="tun-ep">{{.Tr "field.endpoint"}}</label>
-      <input id="tun-ep" name="endpoint" placeholder="198.51.100.20:51820" value="{{index $form "endpoint"}}">
-    </div>
-    <div class="field">
-      <label for="tun-allowed">{{.Tr "field.allowed_ips"}}</label>
-      <input id="tun-allowed" name="allowed_ips" placeholder="10.200.1.2/32" value="{{index $form "allowed_ips"}}">
-    </div>
-    <div class="field">
-      <label for="tun-ka">{{.Tr "field.keepalive"}}</label>
-      <input id="tun-ka" name="persistent_keepalive" type="number" value="{{if index $form "persistent_keepalive"}}{{index $form "persistent_keepalive"}}{{else}}25{{end}}">
-    </div>
-    <div class="field">
-      <label for="tun-prio">{{.Tr "field.priority"}}</label>
-      <input id="tun-prio" name="priority" type="number" value="{{if index $form "priority"}}{{index $form "priority"}}{{else}}0{{end}}">
-    </div>
-    <div class="field wide">
-      <label for="tun-key">{{.Tr "field.private_key_path"}}</label>
-      <input id="tun-key" name="private_key_path" required placeholder="/etc/proxyctl/keys/wg-a.key" value="{{index $form "private_key_path"}}" autocomplete="off">
-      <span class="field-help">{{.Tr "tunnels.key_help"}}</span>
-    </div>
-    <div class="wide actions">
-      <button type="submit">{{.Tr "action.create"}}</button>
-    </div>
-  </form>
-</div>
-{{end}}
 {{template "footer" .}}
+{{end}}
+
+{{define "tunnel-create-form"}}
+{{$form := .Data.Form}}
+<form method="post" action="/tunnels" class="form-grid" data-disable-on-submit autocomplete="off">
+  <div class="field">
+    <label for="tun-node">{{.Tr "field.node"}}</label>
+    <select id="tun-node" name="node_id" required>
+      {{range .Data.Nodes}}<option value="{{.ID}}" {{if eq (index $form "node_id") (printf "%s" .ID)}}selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+  </div>
+  <div class="field">
+    <label for="tun-backend">{{.Tr "field.backend"}}</label>
+    <select id="tun-backend" name="backend_id" required>
+      {{range .Data.Backends}}<option value="{{.ID}}" {{if eq (index $form "backend_id") (printf "%s" .ID)}}selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+  </div>
+  <div class="field">
+    <label for="tun-if">{{.Tr "field.interface"}}</label>
+    <input id="tun-if" name="interface_name" required placeholder="wg-a" value="{{index $form "interface_name"}}">
+  </div>
+  <div class="field">
+    <label for="tun-port">{{.Tr "field.listen_port"}}</label>
+    <input id="tun-port" name="listen_port" type="number" required value="{{if index $form "listen_port"}}{{index $form "listen_port"}}{{else}}51820{{end}}">
+  </div>
+  <div class="field">
+    <label for="tun-local">{{.Tr "field.local_overlay"}}</label>
+    <input id="tun-local" name="local_overlay_ip" required placeholder="10.200.1.1" value="{{index $form "local_overlay_ip"}}">
+  </div>
+  <div class="field">
+    <label for="tun-remote">{{.Tr "field.remote_overlay"}}</label>
+    <input id="tun-remote" name="remote_overlay_ip" required placeholder="10.200.1.2" value="{{index $form "remote_overlay_ip"}}">
+  </div>
+  <div class="field">
+    <label for="tun-ep">{{.Tr "field.endpoint"}}</label>
+    <input id="tun-ep" name="endpoint" placeholder="198.51.100.20:51820" value="{{index $form "endpoint"}}">
+  </div>
+  <div class="field">
+    <label for="tun-allowed">{{.Tr "field.allowed_ips"}}</label>
+    <input id="tun-allowed" name="allowed_ips" placeholder="10.200.1.2/32" value="{{index $form "allowed_ips"}}">
+  </div>
+  <div class="field">
+    <label for="tun-ka">{{.Tr "field.keepalive"}}</label>
+    <input id="tun-ka" name="persistent_keepalive" type="number" value="{{if index $form "persistent_keepalive"}}{{index $form "persistent_keepalive"}}{{else}}25{{end}}">
+  </div>
+  <div class="field">
+    <label for="tun-prio">{{.Tr "field.priority"}}</label>
+    <input id="tun-prio" name="priority" type="number" value="{{if index $form "priority"}}{{index $form "priority"}}{{else}}0{{end}}">
+  </div>
+  <div class="field wide">
+    <label for="tun-key">{{.Tr "field.private_key_path"}}</label>
+    <input id="tun-key" name="private_key_path" required placeholder="/etc/proxyctl/keys/wg-a.key" value="{{index $form "private_key_path"}}" autocomplete="off">
+    <span class="field-help">{{.Tr "tunnels.key_help"}}</span>
+  </div>
+  <div class="wide actions">
+    <button type="submit">{{.Tr "action.create"}}</button>
+    <a class="btn secondary" href="/tunnels">{{.Tr "action.cancel"}}</a>
+  </div>
+</form>
 {{end}}

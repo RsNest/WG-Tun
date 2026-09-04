@@ -264,19 +264,45 @@ func (s *Server) writeForbidden(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, tr("error.not_allowed"), http.StatusForbidden)
 }
 
+var pageCrumbs = map[string][2]string{
+	"dashboard": {"nav.group.overview", "nav.dashboard"},
+	"nodes":     {"nav.group.infrastructure", "nav.entry_nodes"},
+	"backends":  {"nav.group.infrastructure", "nav.backends"},
+	"tunnels":   {"nav.group.infrastructure", "nav.tunnels"},
+	"mappings":  {"nav.group.infrastructure", "nav.mappings"},
+	"sni":       {"nav.group.infrastructure", "nav.sni_routes"},
+	"events":    {"nav.group.monitoring", "nav.events"},
+	"users":     {"nav.group.administration", "nav.users"},
+	"apiref":    {"nav.group.administration", "nav.api_reference"},
+	"settings":  {"nav.group.administration", "nav.settings"},
+}
+
+func (s *Server) navCollapsed(r *http.Request) bool {
+	c, err := r.Cookie(navCookie)
+	return err == nil && c.Value == "collapsed"
+}
+
 func (s *Server) pageBase(r *http.Request, title, nav string) page {
 	sess := s.sessionFrom(r)
 	loc := s.locale(r)
 	p := page{
-		Title:     title,
-		Nav:       nav,
-		LiveApply: s.liveApply,
-		Locale:    loc,
-		T:         i18n.Translator(loc),
-		CanAdmin:  sess != nil && canAdmin(sess.Role),
+		Title:        title,
+		Nav:          nav,
+		LiveApply:    s.liveApply,
+		Locale:       loc,
+		T:            i18n.Translator(loc),
+		CanAdmin:     sess != nil && canAdmin(sess.Role),
+		NavCollapsed: s.navCollapsed(r),
+	}
+	if c, ok := pageCrumbs[nav]; ok {
+		p.CrumbGroup, p.CrumbPage = c[0], c[1]
 	}
 	if sess != nil {
 		p.Principal = &model.PrincipalView{Name: sess.Name, Role: sess.Role}
+		p.DisplayName = sess.DisplayName
+		if p.DisplayName == "" {
+			p.DisplayName = sess.Name
+		}
 		p.CanWrite = canWrite(sess.Role)
 		p.UserID = string(sess.UserID)
 		p.TokenSession = sess.Token != "" && sess.UserID == ""

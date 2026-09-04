@@ -1,107 +1,166 @@
 {{define "users"}}
 {{template "header" .}}
 {{$form := .Data.Form}}
-<h1>{{.Tr "users.title"}}</h1>
-<p class="lead">{{.Tr "users.lead"}}</p>
-{{if .Data.FormError}}<div class="alert validation" role="alert">{{$.Tr .Data.FormError}}</div>{{end}}
-
-<div class="panel">
-  {{if not .Data.Users}}<p class="empty">{{.Tr "users.empty"}}</p>{{else}}
-  <div class="table-wrap">
-  <table class="data">
-    <thead><tr><th>{{.Tr "field.username"}}</th><th>{{.Tr "field.display_name"}}</th><th>{{.Tr "field.role"}}</th><th>{{.Tr "field.locale"}}</th><th>{{.Tr "field.totp"}}</th><th>{{.Tr "field.status"}}</th>{{if .CanAdmin}}<th>{{.Tr "field.actions"}}</th>{{end}}</tr></thead>
-    <tbody>
-    {{range .Data.Users}}
-      <tr>
-        <td class="mono">{{.Username}}</td>
-        <td>{{dash .DisplayName}}</td>
-        <td><span class="badge role-{{.Role}}">{{$.Tr (printf "role.%s" .Role)}}</span></td>
-        <td>{{.Locale}}</td>
-        <td>{{if .TOTPEnabled}}{{$.Tr "users.totp_on"}}{{else}}{{$.Tr "users.totp_off"}}{{end}}</td>
-        <td>{{if .Disabled}}<span class="badge status-disabled">{{$.Tr "field.disabled"}}</span>{{else}}<span class="badge status-healthy">{{$.Tr "field.enabled"}}</span>{{end}}</td>
-        {{if $.CanAdmin}}
-        <td class="col-actions">
-          <form method="post" action="/users/{{.ID}}" class="inline-user-form" data-disable-on-submit>
-            <input type="hidden" name="display_name" value="{{.DisplayName}}">
-            <select name="role">
-              <option value="administrator" {{if eq (printf "%s" .Role) "administrator"}}selected{{end}}>{{$.Tr "role.administrator"}}</option>
-              <option value="operator" {{if eq (printf "%s" .Role) "operator"}}selected{{end}}>{{$.Tr "role.operator"}}</option>
-              <option value="readonly" {{if eq (printf "%s" .Role) "readonly"}}selected{{end}}>{{$.Tr "role.readonly"}}</option>
-            </select>
-            <select name="locale">
-              <option value="en" {{if eq .Locale "en"}}selected{{end}}>{{$.Tr "lang.en"}}</option>
-              <option value="ru" {{if eq .Locale "ru"}}selected{{end}}>{{$.Tr "lang.ru"}}</option>
-            </select>
-            <label class="inline-check"><input type="checkbox" name="disabled" value="true" {{if .Disabled}}checked{{end}}> {{$.Tr "field.disabled"}}</label>
-            <input type="password" name="password" placeholder="{{$.Tr "field.password"}}" autocomplete="new-password">
-            <button type="submit">{{$.Tr "action.save"}}</button>
-          </form>
-        </td>
+{{$sel := .Data.SelectedID}}
+<div class="page-toolbar">
+  <div class="page-toolbar-text">
+    <h1>{{.Tr "users.title"}}</h1>
+    <p class="lead">{{.Tr "users.lead"}}</p>
+  </div>
+  <div class="page-toolbar-actions">
+    {{if and .CanAdmin (not .Data.ShowCreate)}}<a class="btn" href="/users?new=1"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>{{.Tr "users.create"}}</a>{{end}}
+    <a class="btn secondary" href="/users">{{.Tr "action.refresh"}}</a>
+  </div>
+</div>
+{{if .Data.FormError}}<div class="alert validation flash-slot" role="alert">{{$.Tr .Data.FormError}}</div>{{end}}
+<div class="workspace">
+  <div class="workspace-main">
+    <div class="filter-row" data-filter-table="users-table">
+      <input type="search" data-filter-q placeholder="{{.Tr "ui.search"}}" aria-label="{{.Tr "ui.search"}}">
+    </div>
+    {{if not .Data.Users}}<p class="empty">{{.Tr "users.empty"}}</p>{{else}}
+    <div class="table-wrap">
+      <table class="data" id="users-table">
+        <thead>
+          <tr>
+            <th data-sort>{{.Tr "field.status"}}</th>
+            <th data-sort>{{.Tr "field.username"}}</th>
+            <th data-sort>{{.Tr "field.display_name"}}</th>
+            <th data-sort>{{.Tr "field.role"}}</th>
+            <th data-sort>{{.Tr "field.totp"}}</th>
+            <th data-sort>{{.Tr "field.last_login"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {{range .Data.Users}}
+          <tr data-href="/users?id={{.ID}}" tabindex="0" data-status="{{if .Disabled}}disabled{{else}}enabled{{end}}" {{if eq (printf "%s" .ID) $sel}}class="selected"{{end}}>
+            <td>{{if .Disabled}}{{$.Tr "field.disabled"}}{{else}}{{$.Tr "field.enabled"}}{{end}}</td>
+            <td class="name-cell">{{.Username}}</td>
+            <td>{{dash .DisplayName}}</td>
+            <td><span class="role-{{.Role}}">{{$.Tr (printf "role.%s" .Role)}}</span></td>
+            <td>{{if .TOTPEnabled}}{{$.Tr "users.totp_on"}}{{else}}{{$.Tr "users.totp_off"}}{{end}}</td>
+            <td class="muted">{{fmtTime .LastLoginAt}}</td>
+          </tr>
         {{end}}
-      </tr>
+        </tbody>
+      </table>
+    </div>
     {{end}}
-    </tbody>
-  </table>
-  </div>
-  {{end}}
-</div>
-
-{{if .CanAdmin}}
-<div class="panel">
-  <h2>{{.Tr "users.create"}}</h2>
-  <form method="post" action="/users" class="form-grid" data-disable-on-submit autocomplete="off">
-    <div class="field">
-      <label for="user-name">{{.Tr "field.username"}}</label>
-      <input id="user-name" name="username" required value="{{index $form "username"}}">
+    <div class="section-h"><h2>{{.Tr "users.tokens"}}</h2></div>
+    <p class="hint">{{.Tr "users.tokens_lead"}}</p>
+    {{if not .Data.Tokens}}<p class="empty">{{.Tr "users.tokens_empty"}}</p>{{else}}
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>{{.Tr "field.name"}}</th><th>{{.Tr "field.role"}}</th></tr></thead>
+        <tbody>
+        {{range .Data.Tokens}}
+          <tr>
+            <td>{{.Name}}</td>
+            <td>{{.Role}}</td>
+          </tr>
+        {{end}}
+        </tbody>
+      </table>
     </div>
-    <div class="field">
-      <label for="user-display">{{.Tr "field.display_name"}}</label>
-      <input id="user-display" name="display_name" value="{{index $form "display_name"}}">
-    </div>
-    <div class="field">
-      <label for="user-role">{{.Tr "field.role"}}</label>
-      <select id="user-role" name="role">
-        <option value="operator">{{.Tr "role.operator"}}</option>
-        <option value="readonly">{{.Tr "role.readonly"}}</option>
-        <option value="administrator">{{.Tr "role.administrator"}}</option>
-      </select>
-    </div>
-    <div class="field">
-      <label for="user-locale">{{.Tr "field.locale"}}</label>
-      <select id="user-locale" name="locale">
-        <option value="en">{{.Tr "lang.en"}}</option>
-        <option value="ru">{{.Tr "lang.ru"}}</option>
-      </select>
-    </div>
-    <div class="field">
-      <label for="user-pass">{{.Tr "field.password"}}</label>
-      <input id="user-pass" type="password" name="password" required minlength="10" autocomplete="new-password">
-    </div>
-    <div class="wide actions">
-      <button type="submit">{{.Tr "action.create"}}</button>
-    </div>
-  </form>
-</div>
-{{end}}
-
-<div class="panel">
-  <h2>{{.Tr "users.tokens"}}</h2>
-  <p class="panel-help">{{.Tr "users.tokens_lead"}}</p>
-  {{if not .Data.Tokens}}<p class="empty">{{.Tr "users.tokens_empty"}}</p>{{else}}
-  <div class="table-wrap">
-  <table class="data">
-    <thead><tr><th>{{.Tr "field.name"}}</th><th>{{.Tr "field.role"}}</th><th>{{.Tr "field.id"}}</th></tr></thead>
-    <tbody>
-    {{range .Data.Tokens}}
-      <tr>
-        <td>{{.Name}}</td>
-        <td class="mono">{{.Role}}</td>
-        <td class="mono muted">{{.ID}}</td>
-      </tr>
     {{end}}
-    </tbody>
-  </table>
   </div>
+  {{if .Data.ShowCreate}}
+  <aside class="detail-panel" role="complementary">
+    <div class="panel-head">
+      <h2>{{.Tr "users.create"}}</h2>
+      <a class="icon-btn" data-panel-close href="/users" aria-label="{{.Tr "action.close"}}"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></a>
+    </div>
+    {{if .CanAdmin}}
+    <form method="post" action="/users" class="form-grid" data-disable-on-submit autocomplete="off">
+      <div class="field">
+        <label for="user-name">{{.Tr "field.username"}}</label>
+        <input id="user-name" name="username" required value="{{index $form "username"}}">
+      </div>
+      <div class="field">
+        <label for="user-display">{{.Tr "field.display_name"}}</label>
+        <input id="user-display" name="display_name" value="{{index $form "display_name"}}">
+      </div>
+      <div class="field">
+        <label for="user-role">{{.Tr "field.role"}}</label>
+        <select id="user-role" name="role">
+          <option value="operator">{{.Tr "role.operator"}}</option>
+          <option value="readonly">{{.Tr "role.readonly"}}</option>
+          <option value="administrator">{{.Tr "role.administrator"}}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="user-locale">{{.Tr "field.locale"}}</label>
+        <select id="user-locale" name="locale">
+          <option value="en">{{.Tr "lang.en"}}</option>
+          <option value="ru">{{.Tr "lang.ru"}}</option>
+        </select>
+      </div>
+      <div class="field wide">
+        <label for="user-pass">{{.Tr "field.password"}}</label>
+        <input id="user-pass" type="password" name="password" required minlength="10" autocomplete="new-password">
+      </div>
+      <div class="wide actions">
+        <button type="submit">{{.Tr "action.create"}}</button>
+        <a class="btn secondary" href="/users">{{.Tr "action.cancel"}}</a>
+      </div>
+    </form>
+    {{end}}
+  </aside>
+  {{else if .Data.Selected}}
+  <aside class="detail-panel" role="complementary">
+    {{$u := .Data.Selected}}
+    <div class="panel-head">
+      <h2>{{$u.Username}}</h2>
+      <a class="icon-btn" data-panel-close href="/users" aria-label="{{.Tr "action.close"}}"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></a>
+    </div>
+    <dl class="meta">
+      <dt>{{.Tr "field.display_name"}}</dt><dd>{{dash $u.DisplayName}}</dd>
+      <dt>{{.Tr "field.role"}}</dt><dd><span class="role-{{$u.Role}}">{{$.Tr (printf "role.%s" $u.Role)}}</span></dd>
+      <dt>{{.Tr "field.totp"}}</dt><dd>{{if $u.TOTPEnabled}}{{$.Tr "users.totp_on"}}{{else}}{{$.Tr "users.totp_off"}}{{end}}</dd>
+      <dt>{{.Tr "field.last_login"}}</dt><dd>{{fmtTime $u.LastLoginAt}}</dd>
+      <dt>{{.Tr "field.id"}}</dt>
+      <dd>
+        <div class="id-row">
+          <code>{{$u.ID}}</code>
+          <button type="button" class="icon-btn" data-copy="{{$u.ID}}" aria-label="{{$.Tr "ui.id_copy"}}"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button>
+        </div>
+      </dd>
+    </dl>
+    {{if .CanAdmin}}
+    <div class="section-h"><h2>{{.Tr "action.edit"}}</h2></div>
+    <form method="post" action="/users/{{$u.ID}}" class="form-grid" data-disable-on-submit>
+      <div class="field">
+        <label for="edit-display">{{.Tr "field.display_name"}}</label>
+        <input id="edit-display" name="display_name" value="{{$u.DisplayName}}">
+      </div>
+      <div class="field">
+        <label for="edit-role">{{.Tr "field.role"}}</label>
+        <select id="edit-role" name="role">
+          <option value="administrator" {{if eq (printf "%s" $u.Role) "administrator"}}selected{{end}}>{{$.Tr "role.administrator"}}</option>
+          <option value="operator" {{if eq (printf "%s" $u.Role) "operator"}}selected{{end}}>{{$.Tr "role.operator"}}</option>
+          <option value="readonly" {{if eq (printf "%s" $u.Role) "readonly"}}selected{{end}}>{{$.Tr "role.readonly"}}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="edit-locale">{{.Tr "field.locale"}}</label>
+        <select id="edit-locale" name="locale">
+          <option value="en" {{if eq $u.Locale "en"}}selected{{end}}>{{$.Tr "lang.en"}}</option>
+          <option value="ru" {{if eq $u.Locale "ru"}}selected{{end}}>{{$.Tr "lang.ru"}}</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="inline-check"><input type="checkbox" name="disabled" value="true" {{if $u.Disabled}}checked{{end}}> {{$.Tr "field.disabled"}}</label>
+      </div>
+      <div class="field wide">
+        <label for="edit-pass">{{.Tr "field.password"}}</label>
+        <input id="edit-pass" type="password" name="password" autocomplete="new-password">
+      </div>
+      <div class="wide actions">
+        <button type="submit">{{$.Tr "action.save"}}</button>
+      </div>
+    </form>
+    {{end}}
+  </aside>
   {{end}}
 </div>
 {{template "footer" .}}
@@ -110,81 +169,116 @@
 {{define "settings"}}
 {{template "header" .}}
 {{$u := .Data.User}}
-<h1>{{.Tr "settings.title"}}</h1>
-<p class="lead">{{.Tr "settings.lead"}}</p>
-{{if .Data.FormError}}<div class="alert validation" role="alert">{{$.Tr .Data.FormError}}</div>{{end}}
-
-<div class="panel">
-  <h2>{{.Tr "settings.language"}}</h2>
-  <form method="post" action="/locale" class="actions" hx-post="/locale" hx-swap="none">
-    <button class="{{if eq $.Locale "en"}}{{else}}secondary{{end}}" type="submit" name="locale" value="en">{{.Tr "lang.en"}}</button>
-    <button class="{{if eq $.Locale "ru"}}{{else}}secondary{{end}}" type="submit" name="locale" value="ru">{{.Tr "lang.ru"}}</button>
-  </form>
+{{$tab := .Data.Tab}}
+<div class="page-toolbar">
+  <div class="page-toolbar-text">
+    <h1>{{.Tr "settings.title"}}</h1>
+    <p class="lead">{{.Tr "settings.lead"}}</p>
+  </div>
 </div>
-
-{{if not $u}}
-<div class="panel">
-  <p class="hint">{{.Tr "settings.token_session"}}</p>
-</div>
-{{else}}
-<div class="panel">
-  <h2>{{.Tr "settings.password"}}</h2>
-  <form method="post" action="/settings/password" class="form-grid" data-disable-on-submit>
-    <div class="field">
-      <label for="new-pass">{{.Tr "settings.new_password"}}</label>
-      <input id="new-pass" type="password" name="password" required minlength="10" autocomplete="new-password">
+{{if .Data.FormError}}<div class="alert validation flash-slot" role="alert">{{$.Tr .Data.FormError}}</div>{{end}}
+<div class="workspace"><div class="workspace-main">
+<div class="settings-layout">
+  <nav class="settings-nav" aria-label="{{.Tr "settings.title"}}">
+    <a href="/settings?tab=general" {{if eq $tab "general"}}class="active" aria-current="page"{{end}}>{{.Tr "settings.nav_general"}}</a>
+    <a href="/settings?tab=security" {{if eq $tab "security"}}class="active" aria-current="page"{{end}}>{{.Tr "settings.nav_security"}}</a>
+    <a href="/settings?tab=appearance" {{if eq $tab "appearance"}}class="active" aria-current="page"{{end}}>{{.Tr "settings.nav_appearance"}}</a>
+  </nav>
+  <div class="settings-body">
+    {{if eq $tab "general"}}
+    <div class="settings-card">
+      <h2>{{.Tr "settings.identity"}}</h2>
+      <dl class="meta">
+        <dt>{{.Tr "field.username"}}</dt><dd>{{if .Principal}}{{.Principal.Name}}{{end}}</dd>
+        <dt>{{.Tr "field.role"}}</dt><dd>{{if .Principal}}{{.Tr (printf "role.%s" .Principal.Role)}}{{end}}</dd>
+        {{if $u}}<dt>{{.Tr "field.display_name"}}</dt><dd>{{dash $u.DisplayName}}</dd>{{end}}
+      </dl>
+      {{if not $u}}<p class="hint">{{.Tr "settings.token_session"}}</p>{{end}}
     </div>
-    <div class="wide actions">
-      <button type="submit">{{.Tr "action.change_password"}}</button>
+    {{end}}
+    {{if eq $tab "appearance"}}
+    <div class="settings-card">
+      <h2>{{.Tr "settings.language"}}</h2>
+      <form method="post" action="/locale" class="actions" hx-post="/locale" hx-swap="none">
+        <button class="{{if eq $.Locale "en"}}{{else}}secondary{{end}}" type="submit" name="locale" value="en">{{.Tr "lang.en"}}</button>
+        <button class="{{if eq $.Locale "ru"}}{{else}}secondary{{end}}" type="submit" name="locale" value="ru">{{.Tr "lang.ru"}}</button>
+      </form>
     </div>
-  </form>
-</div>
-
-<div class="panel">
-  <h2>{{.Tr "settings.totp"}}</h2>
-  <p class="panel-help">{{.Tr "settings.totp_help"}}</p>
-  <p>{{if $u.TOTPEnabled}}<span class="badge status-healthy">{{.Tr "users.totp_on"}}</span>{{else}}<span class="badge status-unknown">{{.Tr "users.totp_off"}}</span>{{end}}</p>
-  {{if .Data.TOTP}}
-    <dl class="meta">
-      <dt>{{.Tr "settings.totp_secret"}}</dt><dd class="mono">{{.Data.TOTP.Secret}}</dd>
-      <dt>{{.Tr "settings.totp_url"}}</dt><dd class="mono">{{.Data.TOTP.OTPAuthURL}}</dd>
-    </dl>
-    <form method="post" action="/settings/totp/confirm" class="form-grid" data-disable-on-submit>
-      <div class="field">
-        <label for="totp-code">{{.Tr "mfa.code"}}</label>
-        <input id="totp-code" name="code" required inputmode="numeric">
-      </div>
-      <div class="wide actions">
-        <button type="submit">{{.Tr "action.confirm_totp"}}</button>
-      </div>
-    </form>
-  {{else if not $u.TOTPEnabled}}
-    <form method="post" action="/settings/totp/begin"><button type="submit">{{.Tr "action.begin_totp"}}</button></form>
-  {{else}}
-    <div class="actions">
-      <form method="post" action="/settings/recovery"><button class="secondary" type="submit">{{.Tr "action.rotate_recovery"}}</button></form>
-      <form method="post" action="/settings/totp/disable"><button class="danger" type="submit">{{.Tr "action.disable_totp"}}</button></form>
+    {{end}}
+    {{if eq $tab "security"}}
+    {{if not $u}}
+    <div class="settings-card">
+      <p class="hint">{{.Tr "settings.token_session"}}</p>
     </div>
-  {{end}}
-  {{if .Data.Recovery}}
-    <div class="alert warning" role="status">{{.Tr "settings.recovery_warn"}}</div>
-    <ul class="recovery-list">
-      {{range .Data.Recovery.Codes}}<li class="mono">{{.}}</li>{{end}}
-    </ul>
-  {{end}}
+    {{else}}
+    <div class="settings-card">
+      <h2>{{.Tr "settings.password"}}</h2>
+      <form method="post" action="/settings/password" class="form-grid" data-disable-on-submit>
+        <div class="field wide">
+          <label for="new-pass">{{.Tr "settings.new_password"}}</label>
+          <input id="new-pass" type="password" name="password" required minlength="10" autocomplete="new-password">
+        </div>
+        <div class="wide actions">
+          <button type="submit">{{.Tr "action.change_password"}}</button>
+        </div>
+      </form>
+    </div>
+    <div class="settings-card">
+      <h2>{{.Tr "settings.totp"}}</h2>
+      <p class="hint">{{.Tr "settings.totp_help"}}</p>
+      <p>{{if $u.TOTPEnabled}}{{.Tr "users.totp_on"}}{{else}}{{.Tr "users.totp_off"}}{{end}}</p>
+      {{if .Data.TOTP}}
+        <dl class="meta">
+          <dt>{{.Tr "settings.totp_secret"}}</dt><dd class="mono">{{.Data.TOTP.Secret}}</dd>
+          <dt>{{.Tr "settings.totp_url"}}</dt><dd class="mono">{{.Data.TOTP.OTPAuthURL}}</dd>
+        </dl>
+        <form method="post" action="/settings/totp/confirm" class="form-grid" data-disable-on-submit>
+          <div class="field">
+            <label for="totp-code">{{.Tr "mfa.code"}}</label>
+            <input id="totp-code" name="code" required inputmode="numeric">
+          </div>
+          <div class="wide actions">
+            <button type="submit">{{.Tr "action.confirm_totp"}}</button>
+          </div>
+        </form>
+      {{else if not $u.TOTPEnabled}}
+        <form method="post" action="/settings/totp/begin"><button type="submit">{{.Tr "action.begin_totp"}}</button></form>
+      {{else}}
+        <div class="actions">
+          <form method="post" action="/settings/recovery"><button class="secondary" type="submit">{{.Tr "action.rotate_recovery"}}</button></form>
+          <form method="post" action="/settings/totp/disable"><button class="danger" type="submit">{{.Tr "action.disable_totp"}}</button></form>
+        </div>
+      {{end}}
+      {{if .Data.Recovery}}
+        <div class="alert warning" role="status">{{.Tr "settings.recovery_warn"}}</div>
+        <ul class="recovery-list">
+          {{range .Data.Recovery.Codes}}<li class="mono">{{.}}</li>{{end}}
+        </ul>
+      {{end}}
+    </div>
+    {{end}}
+    {{end}}
+  </div>
 </div>
-{{end}}
+</div></div>
 {{template "footer" .}}
 {{end}}
 
 {{define "apiref"}}
 {{template "header" .}}
-<h1>{{.Tr "apiref.title"}}</h1>
-<p class="lead">{{.Tr "apiref.lead"}}</p>
-<div class="panel">
+<div class="page-toolbar">
+  <div class="page-toolbar-text">
+    <h1>{{.Tr "apiref.title"}}</h1>
+    <p class="lead">{{.Tr "apiref.lead"}}</p>
+  </div>
+</div>
+<div class="workspace"><div class="workspace-main">
+  <div class="filter-row" data-filter-table="apiref-table">
+    <input type="search" data-filter-q placeholder="{{.Tr "ui.search"}}" aria-label="{{.Tr "ui.search"}}">
+  </div>
   <div class="table-wrap">
-  <table class="data">
-    <thead><tr><th>{{.Tr "apiref.method"}}</th><th>{{.Tr "apiref.path"}}</th><th>{{.Tr "apiref.auth"}}</th><th>{{.Tr "apiref.purpose"}}</th></tr></thead>
+  <table class="data" id="apiref-table">
+    <thead><tr><th data-sort>{{.Tr "apiref.method"}}</th><th data-sort>{{.Tr "apiref.path"}}</th><th data-sort>{{.Tr "apiref.auth"}}</th><th>{{.Tr "apiref.purpose"}}</th></tr></thead>
     <tbody>
     {{range .Data}}
       <tr>
@@ -197,6 +291,6 @@
     </tbody>
   </table>
   </div>
-</div>
+</div></div>
 {{template "footer" .}}
 {{end}}

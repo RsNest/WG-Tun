@@ -1,73 +1,117 @@
 {{define "sni"}}
 {{template "header" .}}
 {{$form := .Data.Form}}
-<h1>{{.Tr "sni.title"}}</h1>
-<p class="lead">{{.Tr "sni.lead"}}</p>
-{{if .Data.FormError}}<div class="alert validation" role="alert">{{$.Tr .Data.FormError}}</div>{{end}}
-
-<div class="panel">
-  {{if not .Data.Rows}}<p class="empty">{{.Tr "sni.empty"}}</p>{{else}}
-  <div class="table-wrap">
-  <table class="data">
-    <thead><tr><th>{{.Tr "field.node"}}</th><th>{{.Tr "field.listen"}}</th><th>{{.Tr "field.match"}}</th><th>{{.Tr "field.backend"}}</th><th>{{.Tr "field.priority"}}</th>{{if .CanWrite}}<th>{{.Tr "field.actions"}}</th>{{end}}</tr></thead>
-    <tbody>
-    {{range .Data.Rows}}
-      <tr>
-        <td>{{.Node}}</td>
-        <td class="mono">{{.Listen}}</td>
-        <td class="mono">{{.Match}}</td>
-        <td>{{.Backend}}</td>
-        <td>{{.Priority}}</td>
-        {{if $.CanWrite}}<td class="col-actions"><a class="btn secondary" href="/sni-routes/{{.ID}}">{{$.Tr "action.edit"}}</a></td>{{end}}
-      </tr>
-    {{end}}
-    </tbody>
-  </table>
+{{$sel := .Data.SelectedID}}
+<div class="page-toolbar">
+  <div class="page-toolbar-text">
+    <h1>{{.Tr "sni.title"}}</h1>
+    <p class="lead">{{.Tr "sni.lead"}}</p>
   </div>
+  <div class="page-toolbar-actions">
+    {{if and .CanWrite (not .Data.ShowCreate)}}<a class="btn" href="/sni-routes?new=1"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>{{.Tr "sni.create"}}</a>{{end}}
+    <a class="btn secondary" href="/sni-routes">{{.Tr "action.refresh"}}</a>
+  </div>
+</div>
+{{if .Data.FormError}}<div class="alert validation flash-slot" role="alert">{{$.Tr .Data.FormError}}</div>{{end}}
+<div class="workspace">
+  <div class="workspace-main">
+    <div class="filter-row" data-filter-table="sni-table">
+      <input type="search" data-filter-q placeholder="{{.Tr "ui.search"}}" aria-label="{{.Tr "ui.search"}}">
+    </div>
+    {{if not .Data.Rows}}<p class="empty">{{.Tr "sni.empty"}}</p>{{else}}
+    <div class="table-wrap">
+      <table class="data" id="sni-table">
+        <thead>
+          <tr>
+            <th data-sort>{{.Tr "field.node"}}</th>
+            <th data-sort>{{.Tr "field.listen"}}</th>
+            <th data-sort>{{.Tr "field.match"}}</th>
+            <th data-sort>{{.Tr "field.backend"}}</th>
+            <th data-sort>{{.Tr "field.priority"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {{range .Data.Rows}}
+          <tr data-href="/sni-routes?id={{.ID}}" tabindex="0" {{if eq .ID $sel}}class="selected"{{end}}>
+            <td>{{.Node}}</td>
+            <td class="mono">{{.Listen}}</td>
+            <td class="mono">{{.Match}}</td>
+            <td>{{.Backend}}</td>
+            <td>{{.Priority}}</td>
+          </tr>
+        {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{end}}
+  </div>
+  {{if .Data.ShowCreate}}
+  <aside class="detail-panel" role="complementary">
+    <div class="panel-head">
+      <h2>{{.Tr "sni.create"}}</h2>
+      <a class="icon-btn" data-panel-close href="/sni-routes" aria-label="{{.Tr "action.close"}}"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></a>
+    </div>
+    {{template "sni-create-form" .}}
+  </aside>
+  {{else if .Data.Route}}
+  <aside class="detail-panel" role="complementary">
+    {{template "sni-panel" .}}
+  </aside>
   {{end}}
 </div>
-
-{{if .CanWrite}}
-<div class="panel">
-  <h2>{{.Tr "sni.create"}}</h2>
-  <form method="post" action="/sni-routes" class="form-grid" data-disable-on-submit>
-    <div class="field">
-      <label for="sni-node">{{.Tr "field.node"}}</label>
-      <select id="sni-node" name="node_id" required>
-        {{range .Data.Nodes}}<option value="{{.ID}}" {{if eq (index $form "node_id") (printf "%s" .ID)}}selected{{end}}>{{.Name}}</option>{{end}}
-      </select>
-    </div>
-    <div class="field">
-      <label for="sni-listen">{{.Tr "field.listen"}}</label>
-      <input id="sni-listen" name="listen" value="{{if index $form "listen"}}{{index $form "listen"}}{{else}}:443{{end}}" required>
-    </div>
-    <div class="field">
-      <label for="sni-default">{{.Tr "field.default_backend"}}</label>
-      <select id="sni-default" name="default_backend" required>
-        {{range .Data.Backends}}<option value="{{.Name}}" {{if eq (index $form "default_backend") .Name}}selected{{end}}>{{.Name}}</option>{{end}}
-      </select>
-    </div>
-    <div class="field wide">
-      <label for="sni-matches">{{.Tr "field.extra_matches"}}</label>
-      <textarea id="sni-matches" name="matches" placeholder="app.example.com backend-a">{{index $form "matches"}}</textarea>
-      <span class="field-help">{{.Tr "sni.matches_help"}}</span>
-    </div>
-    <div class="wide actions">
-      <button type="submit">{{.Tr "action.create"}}</button>
-    </div>
-  </form>
-</div>
-{{end}}
 {{template "footer" .}}
 {{end}}
 
-{{define "sni_detail"}}
-{{template "header" .}}
+{{define "sni-create-form"}}
+{{$form := .Data.Form}}
+<form method="post" action="/sni-routes" class="form-grid" data-disable-on-submit>
+  <div class="field">
+    <label for="sni-node">{{.Tr "field.node"}}</label>
+    <select id="sni-node" name="node_id" required>
+      {{range .Data.Nodes}}<option value="{{.ID}}" {{if eq (index $form "node_id") (printf "%s" .ID)}}selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+  </div>
+  <div class="field">
+    <label for="sni-listen">{{.Tr "field.listen"}}</label>
+    <input id="sni-listen" name="listen" value="{{if index $form "listen"}}{{index $form "listen"}}{{else}}:443{{end}}" required>
+  </div>
+  <div class="field">
+    <label for="sni-default">{{.Tr "field.default_backend"}}</label>
+    <select id="sni-default" name="default_backend" required>
+      {{range .Data.Backends}}<option value="{{.Name}}" {{if eq (index $form "default_backend") .Name}}selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+  </div>
+  <div class="field wide">
+    <label for="sni-matches">{{.Tr "field.extra_matches"}}</label>
+    <textarea id="sni-matches" name="matches" placeholder="app.example.com backend-a">{{index $form "matches"}}</textarea>
+    <span class="field-help">{{.Tr "sni.matches_help"}}</span>
+  </div>
+  <div class="wide actions">
+    <button type="submit">{{.Tr "action.create"}}</button>
+    <a class="btn secondary" href="/sni-routes">{{.Tr "action.cancel"}}</a>
+  </div>
+</form>
+{{end}}
+
+{{define "sni-panel"}}
 {{$r := .Data.Route}}
 {{$form := .Data.Form}}
-<h1>{{.Tr "sni.edit"}}</h1>
-{{if .Data.FormError}}<div class="alert validation" role="alert">{{$.Tr .Data.FormError}}</div>{{end}}
-<form method="post" action="/sni-routes/{{$r.ID}}" class="form-grid panel" data-disable-on-submit>
+<div class="panel-head">
+  <h2>{{.Tr "sni.edit"}}</h2>
+  <a class="icon-btn" data-panel-close href="/sni-routes" aria-label="{{.Tr "action.close"}}"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></a>
+</div>
+<dl class="meta">
+  <dt>{{.Tr "field.listen"}}</dt><dd class="mono">{{$r.Listen}}</dd>
+  <dt>{{.Tr "field.id"}}</dt>
+  <dd>
+    <div class="id-row">
+      <code>{{$r.ID}}</code>
+      <button type="button" class="icon-btn" data-copy="{{$r.ID}}" aria-label="{{$.Tr "ui.id_copy"}}"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg></button>
+    </div>
+  </dd>
+</dl>
+{{if .CanWrite}}
+<form method="post" action="/sni-routes/{{$r.ID}}" class="form-grid" data-disable-on-submit>
   <div class="field">
     <label for="edit-sni-node">{{.Tr "field.node"}}</label>
     <select id="edit-sni-node" name="node_id" required>
@@ -94,8 +138,26 @@
   </div>
   <div class="wide actions">
     <button type="submit">{{.Tr "action.save"}}</button>
-    <a class="btn secondary" href="/sni-routes">{{.Tr "action.cancel"}}</a>
+    <a class="btn secondary" href="/sni-routes/{{$r.ID}}">{{.Tr "action.open"}}</a>
   </div>
 </form>
+{{end}}
+{{end}}
+
+{{define "sni_detail"}}
+{{template "header" .}}
+{{$r := .Data.Route}}
+<div class="page-toolbar">
+  <div class="page-toolbar-text">
+    <h1>{{.Tr "sni.edit"}}</h1>
+  </div>
+  <div class="page-toolbar-actions">
+    <a class="btn secondary" href="/sni-routes?id={{$r.ID}}">{{.Tr "action.close"}}</a>
+  </div>
+</div>
+{{if .Data.FormError}}<div class="alert validation flash-slot" role="alert">{{$.Tr .Data.FormError}}</div>{{end}}
+<div class="workspace"><div class="workspace-main">
+{{template "sni-panel" .}}
+</div></div>
 {{template "footer" .}}
 {{end}}

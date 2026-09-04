@@ -47,11 +47,12 @@ func (s *Server) postLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	loc := firstNonEmpty(u.Locale, s.locale(r))
 	sess, err := s.sessions.put(session{
-		UserID:     u.ID,
-		Name:       u.Username,
-		Role:       u.Role,
-		Locale:     i18n.Normalize(loc),
-		MFAPending: u.TOTPEnabled,
+		UserID:      u.ID,
+		Name:        u.Username,
+		DisplayName: firstNonEmpty(u.DisplayName, u.Username),
+		Role:        u.Role,
+		Locale:      i18n.Normalize(loc),
+		MFAPending:  u.TOTPEnabled,
 	})
 	if err != nil {
 		http.Redirect(w, r, "/login?err=session_failed", http.StatusSeeOther)
@@ -84,7 +85,7 @@ func (s *Server) loginWithToken(w http.ResponseWriter, r *http.Request, token st
 		http.Redirect(w, r, "/login?err=agent_token", http.StatusSeeOther)
 		return
 	}
-	sess, err := s.sessions.put(session{Token: token, Name: me.Name, Role: me.Role, Locale: s.locale(r)})
+	sess, err := s.sessions.put(session{Token: token, Name: me.Name, DisplayName: me.Name, Role: me.Role, Locale: s.locale(r)})
 	if err != nil {
 		http.Redirect(w, r, "/login?err=session_failed", http.StatusSeeOther)
 		return
@@ -149,7 +150,7 @@ func (s *Server) postSetup(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/setup?err=invalid_form", http.StatusSeeOther)
 		return
 	}
-	sess, err := s.sessions.put(session{UserID: u.ID, Name: u.Username, Role: u.Role, Locale: i18n.Normalize(u.Locale)})
+	sess, err := s.sessions.put(session{UserID: u.ID, Name: u.Username, DisplayName: firstNonEmpty(u.DisplayName, u.Username), Role: u.Role, Locale: i18n.Normalize(u.Locale)})
 	if err != nil {
 		http.Redirect(w, r, "/login?err=session_failed", http.StatusSeeOther)
 		return
@@ -214,9 +215,18 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 	now := s.now()
 	loc := s.locale(r)
 	cards := make([]nodeCard, 0, len(nodes))
+	healthy, degraded, maps := 0, 0, 0
 	for _, n := range nodes {
 		runtime, _ := api.GetActualState(ctx, string(n.ID))
-		cards = append(cards, buildNodeCard(now, n, mappings, runtime, loc))
+		card := buildNodeCard(now, n, mappings, runtime, loc)
+		cards = append(cards, card)
+		maps += card.MappingCount
+		switch card.Status {
+		case "healthy":
+			healthy++
+		case "degraded", "warning":
+			degraded++
+		}
 	}
 	events, _ := api.ListEvents(ctx, "")
 	if len(events) > 8 {
@@ -224,9 +234,12 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	p := s.pageBase(r, i18n.T(loc, "dash.title"), "dashboard")
 	p.Data = map[string]any{
-		"Cards":      cards,
-		"EntryCount": len(nodes),
-		"Events":     buildEventRows(events),
+		"Cards":         cards,
+		"EntryCount":    len(nodes),
+		"HealthyCount":  healthy,
+		"DegradedCount": degraded,
+		"MappingCount":  maps,
+		"Events":        buildEventRows(events),
 	}
 	p.Partial = hx(r)
 	if p.Partial {
@@ -247,42 +260,74 @@ func (s *Server) dashboardFetchErr(w http.ResponseWriter, r *http.Request, err e
 
 func (s *Server) nodesList(w http.ResponseWriter, r *http.Request) {
 	api := s.api(r)
-	nodes, err := api.ListNodes(r.Context())
+	ctx := r.Context()
+	nodes, err := api.ListNodes(ctx)
 	if err != nil {
 		s.pageErr(w, r, err)
 		return
 	}
-	p := s.pageBase(r, i18n.T(s.locale(r), "nodes.title"), "nodes")
-	p.Data = nodes
+	mappings, err := api.ListMappings(ctx)
+	if err != nil {
+		s.pageErr(w, r, err)
+		return
+	}
+	now := s.now()
+	loc := s.locale(r)
+	rows := make([]nodeCard, 0, len(nodes))
+	for _, n := range nodes {
+		runtime, _ := api.GetActualState(ctx, string(n.ID))
+		rows = append(rows, buildNodeCard(now, n, mappings, runtime, loc))
+	}
+	p := s.pageBase(r, i18n.T(loc, "nodes.title"), "nodes")
+	data := map[string]any{
+		"Rows":       rows,
+		"SelectedID": queryID(r),
+	}
+	if id := queryID(r); id != "" {
+		if ws, err := s.nodeWorkspace(r, api, id); err == nil {
+			for k, v := range ws {
+				data[k] = v
+			}
+		}
+	}
+	p.Data = data
 	s.render(w, r, "nodes", p)
 }
 
 func (s *Server) nodeDetail(w http.ResponseWriter, r *http.Request) {
 	api := s.api(r)
-	ctx := r.Context()
 	id := r.PathValue("id")
-	node, err := api.GetNode(ctx, id)
+	ws, err := s.nodeWorkspace(r, api, id)
 	if err != nil {
 		s.pageErr(w, r, err)
 		return
 	}
+	node := ws["Node"].(*model.Node)
+	p := s.pageBase(r, node.Name, "nodes")
+	p.Data = ws
+	s.render(w, r, "node_detail", p)
+}
+
+func (s *Server) nodeWorkspace(r *http.Request, api API, id string) (map[string]any, error) {
+	ctx := r.Context()
+	node, err := api.GetNode(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 	ds, err := api.DesiredState(ctx, id)
 	if err != nil {
-		s.pageErr(w, r, err)
-		return
+		return nil, err
 	}
 	runtime, _ := api.GetActualState(ctx, id)
 	planText := "NO CHANGES\n"
 	if pv, err := api.Plan(ctx, id); err == nil && pv != nil && pv.Plan != "" {
 		planText = pv.Plan
 	} else if err != nil {
-		s.pageErr(w, r, err)
-		return
+		return nil, err
 	}
 	allMappings, err := api.ListMappings(ctx)
 	if err != nil {
-		s.pageErr(w, r, err)
-		return
+		return nil, err
 	}
 	var nodeMappings []model.PortMapping
 	for _, m := range allMappings {
@@ -292,16 +337,14 @@ func (s *Server) nodeDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	backends, err := api.ListBackends(ctx)
 	if err != nil {
-		s.pageErr(w, r, err)
-		return
+		return nil, err
 	}
 	cat := newCatalog([]model.Node{*node}, backends)
 	tunnels := make([]tunnelRow, 0, len(ds.Tunnels))
 	for _, t := range ds.Tunnels {
 		tunnels = append(tunnels, buildTunnelRow(t, cat, findTunnelActual(runtime, t)))
 	}
-	p := s.pageBase(r, node.Name, "nodes")
-	p.Data = map[string]any{
+	return map[string]any{
 		"Node":        node,
 		"Card":        buildNodeCard(s.now(), *node, nodeMappings, runtime, s.locale(r)),
 		"Tunnels":     tunnels,
@@ -313,8 +356,7 @@ func (s *Server) nodeDetail(w http.ResponseWriter, r *http.Request) {
 		"CanFailback": len(failbackBackends(ds, runtime)) > 0,
 		"MgmtAddr":    managementAddr(*node),
 		"Labels":      formatLabels(node.Labels),
-	}
-	s.render(w, r, "node_detail", p)
+	}, nil
 }
 
 func (s *Server) backendsList(w http.ResponseWriter, r *http.Request) {
@@ -337,13 +379,38 @@ func (s *Server) renderBackends(w http.ResponseWriter, r *http.Request, form map
 	if form == nil {
 		form = emptyForm()
 	}
+	showCreate := queryNew(r) || (formErr != "" && queryID(r) == "")
+	selectedID := queryID(r)
+	var selected *model.Backend
+	var related []model.Tunnel
+	if selectedID != "" && !showCreate {
+		for i := range backends {
+			if string(backends[i].ID) == selectedID {
+				selected = &backends[i]
+				break
+			}
+		}
+		if selected != nil {
+			if tunnels, err := api.ListTunnels(ctx); err == nil {
+				for _, t := range tunnels {
+					if t.BackendID == selected.ID {
+						related = append(related, t)
+					}
+				}
+			}
+		}
+	}
 	p := s.pageBase(r, i18n.T(s.locale(r), "backends.title"), "backends")
 	p.Data = map[string]any{
-		"Backends":  backends,
-		"Nodes":     nodes,
-		"Catalog":   newCatalog(nodes, backends),
-		"Form":      form,
-		"FormError": formErr,
+		"Backends":   backends,
+		"Nodes":      nodes,
+		"Catalog":    newCatalog(nodes, backends),
+		"Form":       form,
+		"FormError":  formErr,
+		"ShowCreate": showCreate,
+		"SelectedID": selectedID,
+		"Backend":    selected,
+		"Tunnels":    related,
 	}
 	s.render(w, r, "backends", p)
 }
@@ -425,13 +492,27 @@ func (s *Server) renderTunnels(w http.ResponseWriter, r *http.Request, form map[
 	if form == nil {
 		form = emptyForm()
 	}
+	showCreate := queryNew(r) || (formErr != "" && queryID(r) == "")
+	selectedID := queryID(r)
+	var selected *tunnelRow
+	if selectedID != "" && !showCreate {
+		for i := range rows {
+			if rows[i].ID == selectedID {
+				selected = &rows[i]
+				break
+			}
+		}
+	}
 	p := s.pageBase(r, i18n.T(s.locale(r), "tunnels.title"), "tunnels")
 	p.Data = map[string]any{
-		"Rows":      rows,
-		"Nodes":     nodes,
-		"Backends":  backends,
-		"Form":      form,
-		"FormError": formErr,
+		"Rows":       rows,
+		"Nodes":      nodes,
+		"Backends":   backends,
+		"Form":       form,
+		"FormError":  formErr,
+		"ShowCreate": showCreate,
+		"SelectedID": selectedID,
+		"Selected":   selected,
 	}
 	s.render(w, r, "tunnels", p)
 }
@@ -461,14 +542,28 @@ func (s *Server) renderMappings(w http.ResponseWriter, r *http.Request, form map
 	if form == nil {
 		form = emptyForm()
 	}
+	showCreate := queryNew(r) || (formErr != "" && queryID(r) == "")
+	selectedID := queryID(r)
+	var selected *model.PortMapping
+	if selectedID != "" && !showCreate {
+		for i := range mappings {
+			if string(mappings[i].ID) == selectedID {
+				selected = &mappings[i]
+				break
+			}
+		}
+	}
 	p := s.pageBase(r, i18n.T(s.locale(r), "mappings.title"), "mappings")
 	p.Data = map[string]any{
-		"Mappings":  mappings,
-		"Nodes":     nodes,
-		"Backends":  backends,
-		"Catalog":   newCatalog(nodes, backends),
-		"Form":      form,
-		"FormError": formErr,
+		"Mappings":   mappings,
+		"Nodes":      nodes,
+		"Backends":   backends,
+		"Catalog":    newCatalog(nodes, backends),
+		"Form":       form,
+		"FormError":  formErr,
+		"ShowCreate": showCreate,
+		"SelectedID": selectedID,
+		"Selected":   selected,
 	}
 	if hx(r) {
 		s.render(w, r, "mappings-table", p)
@@ -503,13 +598,32 @@ func (s *Server) renderSni(w http.ResponseWriter, r *http.Request, form map[stri
 	if form == nil {
 		form = emptyForm()
 	}
+	showCreate := queryNew(r) || (formErr != "" && queryID(r) == "")
+	selectedID := queryID(r)
+	var selected *model.SniRoute
+	def, extra := "", ""
+	if selectedID != "" && !showCreate {
+		for i := range routes {
+			if string(routes[i].ID) == selectedID {
+				cp := routes[i]
+				selected = &cp
+				def, extra = sniMatchesText(cp, cat)
+				break
+			}
+		}
+	}
 	p := s.pageBase(r, i18n.T(s.locale(r), "sni.title"), "sni")
 	p.Data = map[string]any{
-		"Rows":      flattenSni(routes, cat),
-		"Nodes":     nodes,
-		"Backends":  backends,
-		"Form":      form,
-		"FormError": formErr,
+		"Rows":           flattenSni(routes, cat),
+		"Nodes":          nodes,
+		"Backends":       backends,
+		"Form":           form,
+		"FormError":      formErr,
+		"ShowCreate":     showCreate,
+		"SelectedID":     selectedID,
+		"Route":          selected,
+		"DefaultBackend": def,
+		"ExtraMatches":   extra,
 	}
 	s.render(w, r, "sni", p)
 }
@@ -563,7 +677,7 @@ func (s *Server) renderSniDetail(w http.ResponseWriter, r *http.Request, id stri
 func (s *Server) eventsList(w http.ResponseWriter, r *http.Request) {
 	api := s.api(r)
 	ctx := r.Context()
-	events, err := api.ListEvents(ctx, queryString(r.URL))
+	events, err := api.ListEvents(ctx, eventsAPIQuery(r))
 	if err != nil {
 		s.pageErr(w, r, err)
 		return
@@ -571,19 +685,35 @@ func (s *Server) eventsList(w http.ResponseWriter, r *http.Request) {
 	nodes, _ := api.ListNodes(ctx)
 	backends, _ := api.ListBackends(ctx)
 	q := r.URL.Query()
+	rows := filterEventRows(buildEventRows(events), q.Get("q"), q.Get("actor"), q.Get("result"))
+	selKey := strings.TrimSpace(q.Get("e"))
+	var selected *eventRow
+	for i := range rows {
+		if rows[i].Key == selKey {
+			selected = &rows[i]
+			break
+		}
+	}
 	p := s.pageBase(r, i18n.T(s.locale(r), "events.title"), "events")
 	p.Data = map[string]any{
-		"Events":   buildEventRows(events),
-		"Nodes":    nodes,
-		"Backends": backends,
+		"Events":         rows,
+		"Nodes":          nodes,
+		"Backends":       backends,
+		"Selected":       selected,
+		"SelectedKey":    selKey,
+		"FilterQuery":    retainQuery(r, "e"),
+		"FilterQueryNoE": retainQueryAmp(r, "e"),
 		"Filter": map[string]string{
 			"Node":    q.Get("node"),
 			"Backend": q.Get("backend"),
 			"Since":   q.Get("since"),
 			"Until":   q.Get("until"),
 			"Action":  q.Get("action"),
+			"Q":       q.Get("q"),
+			"Actor":   q.Get("actor"),
+			"Result":  q.Get("result"),
 		},
-		"FilterActive": q.Get("node") != "" || q.Get("backend") != "" || q.Get("since") != "" || q.Get("until") != "" || q.Get("action") != "",
+		"FilterActive": q.Get("node") != "" || q.Get("backend") != "" || q.Get("since") != "" || q.Get("until") != "" || q.Get("action") != "" || q.Get("q") != "" || q.Get("actor") != "" || q.Get("result") != "",
 	}
 	s.render(w, r, "events", p)
 }

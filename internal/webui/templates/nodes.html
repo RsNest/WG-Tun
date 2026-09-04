@@ -1,25 +1,66 @@
 {{define "nodes"}}
 {{template "header" .}}
-<h1>{{.Tr "nodes.title"}}</h1>
-<p class="lead">{{.Tr "nodes.lead"}}</p>
-<div class="panel">
-  {{if not .Data}}
-    <p class="empty">{{.Tr "nodes.empty"}}</p>
-  {{else}}
-  <div class="table-wrap">
-  <table class="data">
-    <thead><tr><th>{{.Tr "field.name"}}</th><th>{{.Tr "field.public_ip"}}</th><th>{{.Tr "field.id"}}</th></tr></thead>
-    <tbody>
-    {{range .Data}}
-      <tr>
-        <td><a href="/nodes/{{.ID}}">{{.Name}}</a></td>
-        <td class="mono">{{dash .PublicIP}}</td>
-        <td class="mono muted">{{.ID}}</td>
-      </tr>
-    {{end}}
-    </tbody>
-  </table>
+{{$sel := .Data.SelectedID}}
+<div class="page-toolbar">
+  <div class="page-toolbar-text">
+    <h1>{{.Tr "nodes.title"}}</h1>
+    <p class="lead">{{.Tr "nodes.lead"}}</p>
   </div>
+  <div class="page-toolbar-actions">
+    {{if $sel}}<span class="sel-count">{{.Trf "ui.selected" 1}}</span>
+    <a class="btn secondary" href="/nodes/{{$sel}}">{{.Tr "action.open"}}</a>
+    {{end}}
+    <a class="btn secondary" href="/nodes{{if $sel}}?id={{$sel}}{{end}}">{{.Tr "action.refresh"}}</a>
+  </div>
+</div>
+<div class="workspace">
+  <div class="workspace-main">
+    <div class="filter-row" data-filter-table="nodes-table">
+      <input type="search" data-filter-q placeholder="{{.Tr "ui.search"}}" aria-label="{{.Tr "ui.search"}}">
+      <select data-filter-status aria-label="{{.Tr "field.status"}}">
+        <option value="">{{.Tr "ui.status_all"}}</option>
+        <option value="healthy">{{.Tr "status.healthy"}}</option>
+        <option value="degraded">{{.Tr "status.degraded"}}</option>
+        <option value="warning">{{.Tr "status.warning"}}</option>
+        <option value="unhealthy">{{.Tr "status.unreachable"}}</option>
+        <option value="unknown">{{.Tr "status.unknown"}}</option>
+      </select>
+    </div>
+    {{if not .Data.Rows}}
+      <p class="empty">{{.Tr "nodes.empty"}}</p>
+    {{else}}
+    <div class="table-wrap">
+      <table class="data" id="nodes-table">
+        <thead>
+          <tr>
+            <th data-sort>{{.Tr "field.status"}}</th>
+            <th data-sort>{{.Tr "field.name"}}</th>
+            <th data-sort>{{.Tr "field.public_ip"}}</th>
+            <th data-sort>{{.Tr "field.transport"}}</th>
+            <th data-sort>{{.Tr "field.agent"}}</th>
+            <th data-sort>{{.Tr "field.last_update"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {{range .Data.Rows}}
+          <tr data-href="/nodes?id={{.ID}}" tabindex="0" data-status="{{.Status}}" {{if eq .ID $sel}}class="selected"{{end}}>
+            <td>{{template "status-dot" (dict "Class" .StatusClass "Label" ($.Tr (statusKey .Status)) "Reason" "")}}</td>
+            <td class="name-cell">{{.Name}}</td>
+            <td class="mono">{{dash .PublicIP}}</td>
+            <td class="transport">{{dash .Transport}}</td>
+            <td>{{if .AgentReported}}{{$.Tr (printf "status.%s" .AgentStatus)}}{{else}}{{$.Tr "field.no_data"}}{{end}}</td>
+            <td class="muted">{{dash .Heartbeat}}</td>
+          </tr>
+        {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{end}}
+  </div>
+  {{if .Data.Node}}
+  <aside class="detail-panel" data-tabs role="complementary" aria-label="{{.Data.Node.Name}}">
+    {{template "node-panel" .}}
+  </aside>
   {{end}}
 </div>
 {{template "footer" .}}
@@ -28,33 +69,121 @@
 {{define "node_detail"}}
 {{template "header" .}}
 {{$n := .Data.Node}}
+<div class="page-toolbar">
+  <div class="page-toolbar-text">
+    <h1>{{$n.Name}}</h1>
+    <p class="lead">{{.Tr "nodes.detail_lead"}}</p>
+  </div>
+  <div class="page-toolbar-actions">
+    <a class="btn secondary" href="/nodes?id={{$n.ID}}">{{.Tr "action.close"}}</a>
+    <a class="btn secondary" href="/nodes/{{$n.ID}}">{{.Tr "action.refresh"}}</a>
+  </div>
+</div>
+<div class="workspace"><div class="workspace-main" data-tabs>
+{{template "node-panel" .}}
+</div></div>
+{{template "footer" .}}
+{{end}}
+
+{{define "node-panel"}}
+{{$n := .Data.Node}}
 {{$card := .Data.Card}}
 {{$cat := .Data.Catalog}}
-<h1>{{$n.Name}}</h1>
-<p class="lead">{{.Tr "nodes.detail_lead"}}</p>
-
-<section class="panel" aria-labelledby="overview-h">
-  <h2 id="overview-h">{{.Tr "nodes.overview"}}</h2>
-  <p class="status-chip">
-    <span class="badge {{$card.StatusClass}}">{{$.Tr (printf "status.%s" $card.Status)}}</span>
-    <span class="transport">{{dash $card.Transport}}</span>
-  </p>
-  <p class="status-reason">{{$.Tr $card.ReasonKey}}</p>
+<div class="panel-head">
+  <div>
+    <h2>{{$n.Name}}</h2>
+    {{template "status-dot" (dict "Class" $card.StatusClass "Label" ($.Tr (statusKey $card.Status)) "Reason" ($.Tr $card.ReasonKey))}}
+  </div>
+  <a class="icon-btn" data-panel-close href="/nodes" aria-label="{{.Tr "action.close"}}" title="{{.Tr "action.close"}}">
+    <svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>
+  </a>
+</div>
+<div class="panel-tabs">
+  <button type="button" class="active" data-tab="overview" data-tab-group="node">{{.Tr "nodes.overview"}}</button>
+  <button type="button" data-tab="plan" data-tab-group="node">{{.Tr "nodes.plan"}}</button>
+  <button type="button" data-tab="advanced" data-tab-group="node">{{.Tr "ui.advanced"}}</button>
+</div>
+<div data-tab-panel="node" data-pane="overview">
   <dl class="meta">
-    <dt>{{.Tr "field.name"}}</dt><dd>{{$n.Name}}</dd>
-    <dt>{{.Tr "field.public_ip"}}</dt><dd>{{dash $n.PublicIP}}</dd>
-    <dt>{{.Tr "field.mgmt"}}</dt><dd>{{dash .Data.MgmtAddr}}</dd>
-    <dt>{{.Tr "field.labels"}}</dt><dd>{{dash .Data.Labels}}</dd>
-    <dt>{{.Tr "field.node_state"}}</dt><dd>{{$.Tr (printf "status.%s" $card.Status)}}</dd>
-    <dt>{{.Tr "field.agent"}}</dt><dd>{{$.Tr (printf "status.%s" $card.AgentStatus)}}</dd>
+    <dt>{{.Tr "field.public_ip"}}</dt><dd class="mono">{{dash $n.PublicIP}}</dd>
+    <dt>{{.Tr "field.mgmt"}}</dt><dd class="mono">{{dash .Data.MgmtAddr}}</dd>
+    <dt>{{.Tr "field.agent"}}</dt><dd>{{if $card.AgentReported}}{{$.Tr (printf "status.%s" $card.AgentStatus)}}{{else}}{{$.Tr "field.no_data"}}{{end}}</dd>
     <dt>{{.Tr "field.current_transport"}}</dt><dd class="transport">{{dash $card.Transport}}</dd>
+    <dt>{{.Tr "field.active_mappings"}}</dt><dd>{{$card.MappingLabel}}</dd>
     <dt>{{.Tr "field.last_reconcile"}}</dt><dd>{{dash $card.LastReconcile}}</dd>
+    <dt>{{.Tr "field.labels"}}</dt><dd>{{dash .Data.Labels}}</dd>
   </dl>
-</section>
-
-<section class="panel" aria-labelledby="plan-h">
-  <h2 id="plan-h">{{.Tr "nodes.plan"}}</h2>
-  <p class="panel-help">{{.Tr "nodes.plan_help"}}</p>
+  <div class="section-h"><h2>{{.Tr "nodes.tunnels"}}</h2></div>
+  {{if not .Data.Tunnels}}<p class="empty">{{.Tr "nodes.empty_tunnels"}}</p>{{else}}
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>{{.Tr "field.type"}}</th><th>{{.Tr "field.backend"}}</th><th>{{.Tr "field.interface"}}</th><th>{{.Tr "field.status"}}</th></tr></thead>
+    <tbody>
+    {{range .Data.Tunnels}}
+      <tr>
+        <td class="mono">{{.Type}}</td>
+        <td>{{.Backend}}</td>
+        <td class="mono">{{dash .Interface}}</td>
+        <td>{{template "status-dot" (dict "Class" .StatusClass "Label" ($.Tr (statusKey .Status)) "Reason" ($.Tr .ReasonKey))}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  </div>
+  {{end}}
+  <div class="section-h"><h2>{{.Tr "nodes.mappings"}}</h2></div>
+  {{if not .Data.Mappings}}<p class="empty">{{.Tr "nodes.empty_mappings"}}</p>{{else}}
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>{{.Tr "field.proto"}}</th><th>{{.Tr "field.public"}}</th><th>{{.Tr "field.backend"}}</th><th>{{.Tr "field.enabled"}}</th></tr></thead>
+    <tbody>
+    {{range .Data.Mappings}}
+      <tr>
+        <td>{{.Protocol}}</td>
+        <td class="mono">{{.PublicPort}}</td>
+        <td>{{$cat.BackendName .BackendID}}</td>
+        <td>{{if .Enabled}}{{$.Tr "field.enabled"}}{{else}}{{$.Tr "field.disabled"}}{{end}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  </div>
+  {{end}}
+  <div class="section-h"><h2>{{.Tr "nodes.sni"}}</h2></div>
+  {{if not .Data.Sni}}<p class="empty">{{.Tr "nodes.empty_sni"}}</p>{{else}}
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>{{.Tr "field.listen"}}</th><th>{{.Tr "field.match"}}</th><th>{{.Tr "field.backend"}}</th></tr></thead>
+    <tbody>
+    {{range .Data.Sni}}
+      <tr>
+        <td class="mono">{{.Listen}}</td>
+        <td class="mono">{{.Match}}</td>
+        <td>{{.Backend}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  </div>
+  {{end}}
+  {{if and .CanWrite .Data.CanFailback}}
+  <div class="section-h" id="failback-h"><h2>{{.Tr "nodes.failback"}}</h2></div>
+  <p class="hint">{{.Tr "nodes.failback_help"}}</p>
+  <form method="post" action="/nodes/{{$n.ID}}/failback" hx-post="/nodes/{{$n.ID}}/failback" hx-swap="none" hx-confirm="{{.Tr "nodes.confirm_failback"}}" hx-disabled-elt="find button">
+    <div class="field">
+      <label for="failback-backend">{{.Tr "field.backend"}}</label>
+      <select id="failback-backend" name="backend" required>
+        {{range .Data.Failback}}
+          <option value="{{.Name}}">{{.Name}}</option>
+        {{end}}
+      </select>
+    </div>
+    <p class="actions"><button class="danger" type="submit">{{.Tr "action.failback"}}</button></p>
+  </form>
+  {{end}}
+</div>
+<div data-tab-panel="node" data-pane="plan" hidden>
+  <p class="hint">{{.Tr "nodes.plan_help"}}</p>
   <div class="actions">
     <button type="button" hx-get="/nodes/{{$n.ID}}/plan" hx-target="#plan" hx-swap="outerHTML" hx-disabled-elt="this">{{.Tr "action.refresh_plan"}}</button>
     {{if .CanWrite}}
@@ -68,95 +197,20 @@
     {{end}}
   </div>
   {{template "plan" (dict "Data" .Data.Plan)}}
-</section>
-
-<section class="panel" aria-labelledby="tunnels-h">
-  <h2 id="tunnels-h">{{.Tr "nodes.tunnels"}}</h2>
-  {{if not .Data.Tunnels}}<p class="empty">{{.Tr "nodes.empty_tunnels"}}</p>{{else}}
-  <div class="table-wrap">
-  <table class="data">
-    <thead><tr><th>{{.Tr "field.type"}}</th><th>{{.Tr "field.backend"}}</th><th>{{.Tr "field.interface"}}</th><th>{{.Tr "field.endpoint"}}</th><th>{{.Tr "field.handshake"}}</th><th>{{.Tr "field.rx"}} / {{.Tr "field.tx"}}</th><th>{{.Tr "field.priority"}} / {{.Tr "field.status"}}</th></tr></thead>
-    <tbody>
-    {{range .Data.Tunnels}}
-      <tr>
-        <td class="mono">{{.Type}}</td>
-        <td>{{.Backend}}</td>
-        <td class="mono">{{dash .Interface}}</td>
-        <td class="mono">{{dash .Endpoint}}</td>
-        <td class="mono">{{dash .Handshake}}</td>
-        <td class="mono">{{dash .Rx}} / {{dash .Tx}}</td>
-        <td>
-          <span class="badge {{.StatusClass}}">{{$.Tr (printf "status.%s" .Status)}}</span>
-          <span class="cell-sub">{{$.Tr "field.priority"}} {{.Priority}}</span>
-          <span class="cell-sub">{{$.Tr .ReasonKey}}</span>
-        </td>
-      </tr>
-    {{end}}
-    </tbody>
-  </table>
-  </div>
-  {{end}}
-</section>
-
-<section class="panel" aria-labelledby="maps-h">
-  <h2 id="maps-h">{{.Tr "nodes.mappings"}}</h2>
-  {{if not .Data.Mappings}}<p class="empty">{{.Tr "nodes.empty_mappings"}}</p>{{else}}
-  <div class="table-wrap">
-  <table class="data">
-    <thead><tr><th>{{.Tr "field.proto"}}</th><th>{{.Tr "field.public"}}</th><th>{{.Tr "field.backend"}}</th><th>{{.Tr "field.backend_port"}}</th><th>{{.Tr "field.enabled"}}</th></tr></thead>
-    <tbody>
-    {{range .Data.Mappings}}
-      <tr>
-        <td>{{.Protocol}}</td>
-        <td class="mono">{{.PublicPort}}</td>
-        <td>{{$cat.BackendName .BackendID}}</td>
-        <td class="mono">{{.BackendPort}}</td>
-        <td>{{if .Enabled}}<span class="badge status-healthy">{{$.Tr "field.enabled"}}</span>{{else}}<span class="badge status-disabled">{{$.Tr "field.disabled"}}</span>{{end}}</td>
-      </tr>
-    {{end}}
-    </tbody>
-  </table>
-  </div>
-  {{end}}
-</section>
-
-<section class="panel" aria-labelledby="sni-h">
-  <h2 id="sni-h">{{.Tr "nodes.sni"}}</h2>
-  {{if not .Data.Sni}}<p class="empty">{{.Tr "nodes.empty_sni"}}</p>{{else}}
-  <div class="table-wrap">
-  <table class="data">
-    <thead><tr><th>{{.Tr "field.listen"}}</th><th>{{.Tr "field.match"}}</th><th>{{.Tr "field.backend"}}</th><th>{{.Tr "field.priority"}}</th></tr></thead>
-    <tbody>
-    {{range .Data.Sni}}
-      <tr>
-        <td class="mono">{{.Listen}}</td>
-        <td class="mono">{{.Match}}</td>
-        <td>{{.Backend}}</td>
-        <td>{{.Priority}}</td>
-      </tr>
-    {{end}}
-    </tbody>
-  </table>
-  </div>
-  {{end}}
-</section>
-
-{{if and .CanWrite .Data.CanFailback}}
-<section class="panel" aria-labelledby="failback-h">
-  <h2 id="failback-h">{{.Tr "nodes.failback"}}</h2>
-  <p class="panel-help">{{.Tr "nodes.failback_help"}}</p>
-  <form method="post" action="/nodes/{{$n.ID}}/failback" hx-post="/nodes/{{$n.ID}}/failback" hx-swap="none" hx-confirm="{{.Tr "nodes.confirm_failback"}}" hx-disabled-elt="find button">
-    <div class="field" style="max-width:280px">
-      <label for="failback-backend">{{.Tr "field.backend"}}</label>
-      <select id="failback-backend" name="backend" required>
-        {{range .Data.Failback}}
-          <option value="{{.Name}}">{{.Name}}</option>
-        {{end}}
-      </select>
-    </div>
-    <p><button class="danger" type="submit">{{.Tr "action.failback"}}</button></p>
-  </form>
-</section>
-{{end}}
-{{template "footer" .}}
+</div>
+<div data-tab-panel="node" data-pane="advanced" hidden>
+  <dl class="meta">
+    <dt>{{.Tr "field.id"}}</dt>
+    <dd>
+      <div class="id-row">
+        <code>{{$n.ID}}</code>
+        <button type="button" class="icon-btn" data-copy="{{$n.ID}}" aria-label="{{$.Tr "ui.id_copy"}}" title="{{$.Tr "ui.id_copy"}}">
+          <svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>
+        </button>
+      </div>
+    </dd>
+    <dt>{{.Tr "field.node_state"}}</dt><dd>{{$.Tr (statusKey $card.Status)}}</dd>
+    <dt>{{.Tr "field.handshake"}}</dt><dd class="mono">{{dash $card.Handshake}}</dd>
+  </dl>
+</div>
 {{end}}

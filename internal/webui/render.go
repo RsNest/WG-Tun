@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -20,7 +21,11 @@ var content embed.FS
 type page struct {
 	Title        string
 	Nav          string
+	CrumbGroup   string
+	CrumbPage    string
 	Principal    *model.PrincipalView
+	DisplayName  string
+	NavCollapsed bool
 	CanWrite     bool
 	CanAdmin     bool
 	UserID       string
@@ -44,6 +49,10 @@ func (p page) Tr(key string) string {
 	return i18n.T(p.Locale, key)
 }
 
+func (p page) Trf(key string, args ...any) string {
+	return i18n.Format(p.Locale, key, args...)
+}
+
 func parseTemplates() (*template.Template, error) {
 	return template.New("").Funcs(template.FuncMap{
 		"dash": func(s string) string {
@@ -52,6 +61,8 @@ func parseTemplates() (*template.Template, error) {
 			}
 			return s
 		},
+		"statusKey": statusKey,
+		"fmtTime":   fmtTime,
 		"dict": func(values ...any) (map[string]any, error) {
 			if len(values)%2 != 0 {
 				return nil, fmt.Errorf("dict: odd argument count")
@@ -92,6 +103,62 @@ func writePlain(w http.ResponseWriter, status int, msg string) {
 
 func hx(r *http.Request) bool {
 	return r.Header.Get("HX-Request") == "true"
+}
+
+func statusKey(status string) string {
+	switch strings.TrimSpace(status) {
+	case "unhealthy":
+		return "status.unreachable"
+	case "":
+		return "status.unknown"
+	default:
+		return "status." + status
+	}
+}
+
+const navCookie = "proxyctl_nav"
+
+func queryID(r *http.Request) string {
+	return strings.TrimSpace(r.URL.Query().Get("id"))
+}
+
+func queryNew(r *http.Request) bool {
+	v := strings.TrimSpace(r.URL.Query().Get("new"))
+	return v == "1" || strings.EqualFold(v, "true")
+}
+
+func eventsAPIQuery(r *http.Request) string {
+	q := url.Values{}
+	for _, k := range []string{"node", "backend", "since", "until", "action"} {
+		if v := strings.TrimSpace(r.URL.Query().Get(k)); v != "" {
+			q.Set(k, v)
+		}
+	}
+	enc := q.Encode()
+	if enc == "" {
+		return ""
+	}
+	return "?" + enc
+}
+
+func retainQuery(r *http.Request, drop ...string) string {
+	q := r.URL.Query()
+	for _, d := range drop {
+		q.Del(d)
+	}
+	enc := q.Encode()
+	if enc == "" {
+		return ""
+	}
+	return "?" + enc
+}
+
+func retainQueryAmp(r *http.Request, drop ...string) string {
+	s := retainQuery(r, drop...)
+	if s == "" {
+		return ""
+	}
+	return "&" + strings.TrimPrefix(s, "?")
 }
 
 func fmtTime(t time.Time) string {

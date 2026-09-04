@@ -1,65 +1,89 @@
 {{define "events"}}
 {{template "header" .}}
 {{$f := .Data.Filter}}
-<h1>{{.Tr "events.title"}}</h1>
-<p class="lead">{{.Tr "events.lead"}}</p>
-
-<form class="filter" method="get" action="/events">
-  <div class="field">
-    <label for="ev-node">{{.Tr "field.node"}}</label>
-    <select id="ev-node" name="node">
-      <option value="">{{.Tr "field.any"}}</option>
-      {{range .Data.Nodes}}
-        <option value="{{.Name}}" {{if eq $.Data.Filter.Node .Name}}selected{{end}}>{{.Name}}</option>
-      {{end}}
-    </select>
+{{$sel := .Data.SelectedKey}}
+<div class="page-toolbar">
+  <div class="page-toolbar-text">
+    <h1>{{.Tr "events.title"}}</h1>
+    <p class="lead">{{.Tr "events.lead"}}</p>
   </div>
-  <div class="field">
-    <label for="ev-backend">{{.Tr "field.backend"}}</label>
-    <select id="ev-backend" name="backend">
-      <option value="">{{.Tr "field.any"}}</option>
-      {{range .Data.Backends}}
-        <option value="{{.Name}}" {{if eq $.Data.Filter.Backend .Name}}selected{{end}}>{{.Name}}</option>
-      {{end}}
-    </select>
+  <div class="page-toolbar-actions">
+    <a class="btn secondary" href="/events{{.Data.FilterQuery}}">{{.Tr "action.refresh"}}</a>
   </div>
-  <div class="field">
-    <label for="ev-since">{{.Tr "field.since"}}</label>
-    <input id="ev-since" type="date" name="since" value="{{$f.Since}}">
-  </div>
-  <div class="field">
-    <label for="ev-until">{{.Tr "field.until"}}</label>
-    <input id="ev-until" type="date" name="until" value="{{$f.Until}}">
-  </div>
-  <div class="field">
-    <label for="ev-action">{{.Tr "field.action"}}</label>
-    <input id="ev-action" name="action" value="{{$f.Action}}" placeholder="create">
-  </div>
-  <div class="filter-actions">
-    <button type="submit">{{.Tr "action.apply_filters"}}</button>
-    <a class="btn secondary" href="/events">{{.Tr "action.clear_filters"}}</a>
-  </div>
-</form>
-
-<div class="panel">
-  {{if not .Data.Events}}<p class="empty">{{if .Data.FilterActive}}{{.Tr "events.empty_filtered"}}{{else}}{{.Tr "events.empty"}}{{end}}</p>{{else}}
-  <div class="table-wrap">
-  <table class="data">
-    <thead><tr><th>{{.Tr "field.time"}}</th><th>{{.Tr "field.actor"}}</th><th>{{.Tr "field.action"}}</th><th>{{.Tr "field.target"}}</th><th>{{.Tr "field.result"}}</th><th>{{.Tr "field.detail"}}</th></tr></thead>
-    <tbody>
-    {{range .Data.Events}}
-      <tr>
-        <td class="mono">{{.When}}</td>
-        <td>{{.Actor}}</td>
-        <td class="mono">{{.Action}}</td>
-        <td class="mono">{{.Target}}</td>
-        <td>{{if .Success}}<span class="badge status-healthy">{{$.Tr "result.ok"}}</span>{{else}}<span class="badge status-unhealthy">{{$.Tr "result.error"}}</span>{{end}}</td>
-        <td class="muted">{{dash .Detail}}</td>
-      </tr>
+</div>
+<div class="workspace">
+  <div class="workspace-main">
+    <form class="filter-row" method="get" action="/events">
+      <input type="search" name="q" value="{{index $f "Q"}}" placeholder="{{.Tr "ui.search"}}" aria-label="{{.Tr "ui.search"}}">
+      <input id="ev-action" name="action" value="{{index $f "Action"}}" placeholder="{{.Tr "field.action"}}" aria-label="{{.Tr "field.action"}}">
+      <input name="actor" value="{{index $f "Actor"}}" placeholder="{{.Tr "field.actor"}}" aria-label="{{.Tr "field.actor"}}">
+      <select name="result" aria-label="{{.Tr "field.result"}}">
+        <option value="">{{.Tr "ui.result_all"}}</option>
+        <option value="ok" {{if eq (index $f "Result") "ok"}}selected{{end}}>{{.Tr "result.ok"}}</option>
+        <option value="error" {{if eq (index $f "Result") "error"}}selected{{end}}>{{.Tr "result.error"}}</option>
+      </select>
+      <select id="ev-node" name="node" aria-label="{{.Tr "field.node"}}">
+        <option value="">{{.Tr "field.node"}}: {{.Tr "field.any"}}</option>
+        {{range .Data.Nodes}}
+          <option value="{{.Name}}" {{if eq (index $f "Node") .Name}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+      <select id="ev-backend" name="backend" aria-label="{{.Tr "field.backend"}}">
+        <option value="">{{.Tr "field.backend"}}: {{.Tr "field.any"}}</option>
+        {{range .Data.Backends}}
+          <option value="{{.Name}}" {{if eq (index $f "Backend") .Name}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+      <input id="ev-since" type="date" name="since" value="{{index $f "Since"}}" aria-label="{{.Tr "field.since"}}">
+      <input id="ev-until" type="date" name="until" value="{{index $f "Until"}}" aria-label="{{.Tr "field.until"}}">
+      <button type="submit">{{.Tr "action.apply_filters"}}</button>
+      <a class="btn secondary" href="/events">{{.Tr "action.clear_filters"}}</a>
+    </form>
+    {{if not .Data.Events}}<p class="empty">{{if .Data.FilterActive}}{{.Tr "events.empty_filtered"}}{{else}}{{.Tr "events.empty"}}{{end}}</p>{{else}}
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th data-sort>{{.Tr "field.time"}}</th>
+            <th data-sort>{{.Tr "field.result"}}</th>
+            <th data-sort>{{.Tr "field.action"}}</th>
+            <th data-sort>{{.Tr "field.actor"}}</th>
+            <th data-sort>{{.Tr "field.target"}}</th>
+            <th>{{.Tr "field.detail"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {{range .Data.Events}}
+          <tr data-href="/events?e={{.Key}}{{$.Data.FilterQueryNoE}}" tabindex="0" {{if eq .Key $sel}}class="selected"{{end}}>
+            <td class="mono">{{.When}}</td>
+            <td>{{if .Success}}<span class="result-ok">{{$.Tr "result.ok"}}</span>{{else}}<span class="result-err">{{$.Tr "result.error"}}</span>{{end}}</td>
+            <td class="mono">{{.Action}}</td>
+            <td>{{.Actor}}</td>
+            <td class="mono cell-trunc">{{.Target}}</td>
+            <td class="muted cell-trunc">{{dash .Detail}}</td>
+          </tr>
+        {{end}}
+        </tbody>
+      </table>
+    </div>
     {{end}}
-    </tbody>
-  </table>
   </div>
+  {{if .Data.Selected}}
+  <aside class="detail-panel" role="complementary">
+    {{$ev := .Data.Selected}}
+    <div class="panel-head">
+      <h2>{{$ev.Action}}</h2>
+      <a class="icon-btn" data-panel-close href="/events{{.Data.FilterQuery}}" aria-label="{{.Tr "action.close"}}"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></a>
+    </div>
+    <dl class="meta">
+      <dt>{{.Tr "field.time"}}</dt><dd class="mono">{{$ev.When}}</dd>
+      <dt>{{.Tr "field.result"}}</dt><dd>{{if $ev.Success}}{{$.Tr "result.ok"}}{{else}}{{$.Tr "result.error"}}{{end}}</dd>
+      <dt>{{.Tr "field.action"}}</dt><dd class="mono">{{$ev.Action}}</dd>
+      <dt>{{.Tr "field.actor"}}</dt><dd>{{$ev.Actor}}</dd>
+      <dt>{{.Tr "field.target"}}</dt><dd class="mono">{{$ev.Target}}</dd>
+      <dt>{{.Tr "field.detail"}}</dt><dd>{{dash $ev.Detail}}</dd>
+    </dl>
+  </aside>
   {{end}}
 </div>
 {{template "footer" .}}

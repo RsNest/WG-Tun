@@ -413,6 +413,7 @@ func formatLabels(m map[string]string) string {
 }
 
 type eventRow struct {
+	Key     string
 	When    string
 	Actor   string
 	Action  string
@@ -426,6 +427,7 @@ func buildEventRows(events []model.AuditEvent) []eventRow {
 	for _, e := range events {
 		target := strings.TrimSpace(e.Resource + " " + e.ResourceID)
 		out = append(out, eventRow{
+			Key:     eventKey(e),
 			When:    e.Timestamp.UTC().Format("2006-01-02 15:04:05"),
 			Actor:   e.Actor,
 			Action:  e.Action,
@@ -433,6 +435,39 @@ func buildEventRows(events []model.AuditEvent) []eventRow {
 			Detail:  safeEventDetail(e.Detail),
 			Success: e.Success,
 		})
+	}
+	return out
+}
+
+func eventKey(e model.AuditEvent) string {
+	return strconv.FormatInt(e.Timestamp.UnixNano(), 10) + "-" + e.Action + "-" + e.ResourceID
+}
+
+func filterEventRows(rows []eventRow, q, actor, result string) []eventRow {
+	q = strings.ToLower(strings.TrimSpace(q))
+	actor = strings.ToLower(strings.TrimSpace(actor))
+	result = strings.ToLower(strings.TrimSpace(result))
+	if q == "" && actor == "" && result == "" {
+		return rows
+	}
+	out := make([]eventRow, 0, len(rows))
+	for _, row := range rows {
+		if actor != "" && !strings.Contains(strings.ToLower(row.Actor), actor) {
+			continue
+		}
+		if result == "ok" && !row.Success {
+			continue
+		}
+		if result == "error" && row.Success {
+			continue
+		}
+		if q != "" {
+			blob := strings.ToLower(row.When + " " + row.Actor + " " + row.Action + " " + row.Target + " " + row.Detail)
+			if !strings.Contains(blob, q) {
+				continue
+			}
+		}
+		out = append(out, row)
 	}
 	return out
 }

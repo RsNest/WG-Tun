@@ -17,7 +17,14 @@
     "api_reference": "API Reference",
     "settings": "Settings",
     "sign_out": "Sign out",
-    "skip": "Skip to content"
+    "skip": "Skip to content",
+    "collapse": "Collapse menu",
+    "expand": "Expand menu",
+    "help": "Help",
+    "account": "Account menu",
+    "my_account": "My account",
+    "security": "Security",
+    "language": "Language"
   },
   "lang": {
     "en": "English",
@@ -75,6 +82,11 @@
     "refresh_failed": "Could not refresh node status. Showing last successful data.",
     "empty": "No nodes configured yet.",
     "kpi_entry": "Entry nodes",
+    "kpi_healthy": "Healthy",
+    "kpi_degraded": "Degraded",
+    "kpi_mappings": "Active mappings",
+    "infra": "Infrastructure status",
+    "view_all": "View all",
     "recent_events": "Recent events"
   },
   "status": {
@@ -83,6 +95,7 @@
     "degraded": "degraded",
     "warning": "warning",
     "unknown": "unknown",
+    "unreachable": "Unreachable",
     "reason": {
       "agent_not_reported": "Agent has not reported actual state yet.",
       "agent_unhealthy": "Agent reported unhealthy.",
@@ -153,7 +166,11 @@
     "since": "Since",
     "until": "Until",
     "any": "any",
-    "reason": "Reason"
+    "reason": "Reason",
+    "last_login": "Last login",
+    "last_update": "Last update",
+    "no_data": "No data",
+    "account": "Account"
   },
   "action": {
     "create": "Create",
@@ -173,7 +190,15 @@
     "confirm_totp": "Confirm TOTP",
     "disable_totp": "Disable TOTP",
     "rotate_recovery": "Generate recovery codes",
-    "change_password": "Change password"
+    "change_password": "Change password",
+    "copy": "Copy",
+    "copied": "Copied",
+    "close": "Close",
+    "refresh": "Refresh",
+    "more": "More",
+    "open": "Open",
+    "search": "Search",
+    "add": "Add"
   },
   "nodes": {
     "title": "Entry Nodes",
@@ -259,7 +284,11 @@
     "totp_url": "otpauth URL",
     "recovery": "Recovery codes",
     "recovery_warn": "Store these codes offline. Each code can be used once. They will not be shown again.",
-    "token_session": "This session was opened with an API token. Password and TOTP settings require a human account."
+    "token_session": "This session was opened with an API token. Password and TOTP settings require a human account.",
+    "nav_general": "General",
+    "nav_security": "Security",
+    "nav_appearance": "Appearance",
+    "identity": "Signed-in identity"
   },
   "apiref": {
     "title": "API Reference",
@@ -380,11 +409,23 @@
     "hours_ago": "%dh ago",
     "days_ago": "%dd ago"
   },
-  "authz": {
+    "authz": {
     "read": "read",
     "write": "write",
     "operator": "operator",
     "none": "none",
     "admin": "administrator"
+  },
+  "ui": {
+    "selected": "%d selected",
+    "search": "Search",
+    "status_all": "Status: All",
+    "result_all": "Result: All",
+    "actor_all": "Actor: All",
+    "filters": "Filters",
+    "advanced": "Advanced",
+    "create_panel": "Create",
+    "id_copy": "Copy ID",
+    "no_selection": "Select a row to inspect it."
   }
 }
