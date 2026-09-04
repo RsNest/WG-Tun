@@ -27,6 +27,12 @@ import (
 )
 
 func main() {
+	if maybeVersion() {
+		return
+	}
+	if maybeHealthcheck() {
+		return
+	}
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "agent: %v\n", err)
 		os.Exit(1)

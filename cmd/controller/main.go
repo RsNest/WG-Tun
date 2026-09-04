@@ -21,6 +21,9 @@ import (
 )
 
 func main() {
+	if maybeVersion() {
+		return
+	}
 	if maybeHealthcheck() {
 		return
 	}

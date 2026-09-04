@@ -3,8 +3,20 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestVersionDoesNotNeedController(t *testing.T) {
+	var out strings.Builder
+	if err := Run([]string{"version"}, Options{Stdout: &out}); err != nil {
+		t.Fatal(err)
+	}
+	got := out.String()
+	if !strings.Contains(got, "proxctl") || !strings.Contains(got, "dev") {
+		t.Fatalf("version output %q", got)
+	}
+}
 
 func TestApplyEnvReadsTokenFileAndInsecure(t *testing.T) {
 	dir := t.TempDir()

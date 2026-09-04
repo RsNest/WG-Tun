@@ -11,6 +11,7 @@ import (
 
 	"proxyctl/internal/client"
 	"proxyctl/internal/model"
+	"proxyctl/internal/version"
 )
 
 type Options struct {
@@ -32,6 +33,10 @@ func Run(args []string, opt Options) error {
 	args, opt = parseGlobals(args, opt)
 	if len(args) == 0 {
 		return fmt.Errorf("usage: proxctl [--controller URL] [--token-file PATH] [--insecure] <command>")
+	}
+	if args[0] == "version" || args[0] == "--version" {
+		fmt.Fprintln(opt.Stdout, version.Line("proxctl"))
+		return nil
 	}
 	opt, err := applyEnv(opt)
 	if err != nil {
@@ -85,6 +90,7 @@ Commands:
   failback status --node NAME
   token add --name NAME --role operator|readonly|agent [--out-file PATH] [--output json|token]
   whoami
+  version
 `
 
 func parseGlobals(args []string, opt Options) ([]string, Options) {
