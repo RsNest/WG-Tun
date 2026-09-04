@@ -1,0 +1,11 @@
+# Optional overlay: Web UI on loopback 8444. UI stays off unless this file is included.
+#   PROXYCTL_VERSION=sha-abcdef1 docker compose -f deploy/compose/controller.yml -f deploy/compose/controller.ui.yml up -d
+services:
+  controller:
+    ports:
+      - "127.0.0.1:8444:8444"
+    command:
+      - --config
+      - /etc/proxyctl/controller.yaml
+      - --ui-listen
+      - 0.0.0.0:8444

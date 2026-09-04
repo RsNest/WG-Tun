@@ -1,3 +1,7 @@
+# Local source-build lab (Docker Engine + Compose). Canonical images:
+#   ghcr.io/rsnest/wg-tun-{controller,agent,proxctl}
+# Release pull (no build): docker-compose.release.yml + PROXYCTL_VERSION.
+# Live Linux overlay: docker-compose.live.yml (see docs/DOCKER.md).
 name: proxyctl
 
 services:

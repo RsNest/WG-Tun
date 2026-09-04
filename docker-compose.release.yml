@@ -1,0 +1,19 @@
+# Pull GHCR images instead of building from source.
+# Requires PROXYCTL_VERSION (immutable sha-* or release v* tag). Do not use "latest".
+#
+#   PROXYCTL_VERSION=sha-abcdef1 docker compose -f docker-compose.yml -f docker-compose.release.yml pull
+#   PROXYCTL_VERSION=sha-abcdef1 docker compose -f docker-compose.yml -f docker-compose.release.yml up -d
+name: proxyctl
+
+services:
+  controller:
+    image: ghcr.io/rsnest/wg-tun-controller:${PROXYCTL_VERSION:?PROXYCTL_VERSION is required}
+    build: !reset null
+  bootstrap:
+    image: ghcr.io/rsnest/wg-tun-proxctl:${PROXYCTL_VERSION:?PROXYCTL_VERSION is required}
+    build: !reset null
+  agent:
+    image: ghcr.io/rsnest/wg-tun-agent:${PROXYCTL_VERSION:?PROXYCTL_VERSION is required}
+    build: !reset null
+  proxctl:
+    image: ghcr.io/rsnest/wg-tun-proxctl:${PROXYCTL_VERSION:?PROXYCTL_VERSION is required}

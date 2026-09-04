@@ -1,7 +1,8 @@
 # Linux Docker Engine only. Do not use on Docker Desktop for Windows.
 # Gate: sudo bash scripts/run-smoke-tests.sh && sudo bash scripts/enable-live-overlay.sh
-# Do not `compose up` this overlay until smoke tests passed and an agent-role
-# token exists at /etc/proxyctl/agent.token.
+# Released agent image: set PROXYCTL_VERSION and include docker-compose.release.yml
+# (enable-live-overlay.sh does this). Do not `compose up` this overlay until smoke
+# tests passed and an agent-role token exists at /etc/proxyctl/agent.token.
 #
 # The live agent MUST share the host network namespace. NET_ADMIN / privileged
 # only grant permission to mutate *this* netns — without network_mode: host

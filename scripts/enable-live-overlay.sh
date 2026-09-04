@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Start the live overlay only after smoke tests passed, with an agent-role
 # token and dry_run_only: true. Does not flip dry_run_only to false.
+#
+# Source build (default): docker compose --build
+# Released images: PROXYCTL_VERSION=sha-<short> sudo -E bash scripts/enable-live-overlay.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -32,8 +35,17 @@ fi
 
 cd "$ROOT"
 
+COMPOSE_FILES=(-f docker-compose.yml)
+BUILD_OPTS=(--build)
+if [ -n "${PROXYCTL_VERSION:-}" ]; then
+  export PROXYCTL_VERSION
+  COMPOSE_FILES+=(-f docker-compose.release.yml)
+  BUILD_OPTS=()
+  log "using GHCR images PROXYCTL_VERSION=${PROXYCTL_VERSION} (no local --build)"
+fi
+
 compose() {
-  docker compose "$@"
+  docker compose "${COMPOSE_FILES[@]}" "$@"
 }
 
 json_field() {
@@ -65,7 +77,10 @@ if grep -qE 'dry_run_only:[[:space:]]*false' "$LIVE_YAML"; then
 fi
 
 log "starting controller only (live agent stays down until the token is in place)"
-compose -f docker-compose.yml up -d --build controller
+if [ -n "${PROXYCTL_VERSION:-}" ]; then
+  compose pull controller
+fi
+compose up -d "${BUILD_OPTS[@]}" controller
 
 log "waiting for controller https://127.0.0.1:8443/readyz"
 ok=0
@@ -122,7 +137,7 @@ else
   xtrace_off
   ensure_token_file
   set +e
-  compose -f docker-compose.yml --profile cli run --rm -T \
+  compose --profile cli run --rm -T \
     -v "${TOKEN_HOST}:/var/lib/proxyctl/agent.token" \
     proxctl token add --name "$TOKEN_NAME" --role agent --out-file /var/lib/proxyctl/agent.token \
     >/dev/null
@@ -145,7 +160,7 @@ umask 077
 boot_cmp=/run/proxyctl/bootstrap.token.cmp
 install -d -m 0700 /run/proxyctl
 install -m 0600 -o root -g root /dev/null "$boot_cmp"
-compose -f docker-compose.yml exec -T controller cat /data/bootstrap.token | tr -d '\r' >"$boot_cmp"
+compose exec -T controller cat /data/bootstrap.token | tr -d '\r' >"$boot_cmp"
 same=0
 if cmp -s -- "$TOKEN_HOST" "$boot_cmp"; then
   same=1
@@ -157,7 +172,7 @@ if [ "$same" -eq 1 ]; then
 fi
 
 log "verifying token role via /api/v1/whoami"
-who=$(compose -f docker-compose.yml --profile cli run --rm -T \
+who=$(compose --profile cli run --rm -T \
   -v "${TOKEN_HOST}:/etc/proxyctl/agent.token:ro" \
   --entrypoint proxctl \
   proxctl --controller https://controller:8443 --token-file /etc/proxyctl/agent.token --insecure whoami)
@@ -167,7 +182,10 @@ if [ "$role" != "agent" ]; then
 fi
 
 log "starting live overlay (dry_run_only=true) + prometheus profile obs"
-compose -f docker-compose.yml -f docker-compose.live.yml --profile obs up -d --build
+if [ -n "${PROXYCTL_VERSION:-}" ]; then
+  compose -f docker-compose.live.yml --profile obs pull
+fi
+compose -f docker-compose.live.yml --profile obs up -d "${BUILD_OPTS[@]}"
 
 cat <<EOF
 proxyctl-smoke: live overlay is up with dry_run_only: true and an agent-role token.
@@ -181,4 +199,6 @@ Prometheus scrape (must be agent-host:9101, not agent:9101):
 
 dry_run_only: false is not automated. After you have reviewed the plan, edit
 configs/docker-agent.live.yaml by hand and recreate the agent container.
+
+Released images (optional): PROXYCTL_VERSION=sha-<shortsha>
 EOF

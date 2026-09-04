@@ -1,0 +1,24 @@
+# Release controller: pull an immutable GHCR image. Host Go is not required.
+#   PROXYCTL_VERSION=sha-abcdef1 docker compose -f deploy/compose/controller.yml pull
+#   PROXYCTL_VERSION=sha-abcdef1 docker compose -f deploy/compose/controller.yml up -d
+#
+# Do not put tokens in this file. The controller writes bootstrap.token into the volume.
+name: proxyctl-controller
+
+services:
+  controller:
+    image: ghcr.io/rsnest/wg-tun-controller:${PROXYCTL_VERSION:?PROXYCTL_VERSION is required (sha-* or v*)}
+    volumes:
+      - proxyctl-data:/data
+    ports:
+      - "127.0.0.1:8443:8443"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/proxyctl-controller", "healthcheck", "--url", "https://127.0.0.1:8443/readyz", "-k"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  proxyctl-data:

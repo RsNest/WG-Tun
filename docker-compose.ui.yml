@@ -1,0 +1,13 @@
+# Lab-only: enable the operator Web UI on the Compose controller.
+# Published on the host as 8444; inside the container it must bind 0.0.0.0
+# to be reachable via Docker port mapping. Prefer 127.0.0.1 on the host publish
+# in production (see deploy/compose/controller.ui.yml).
+services:
+  controller:
+    ports:
+      - "8444:8444"
+    command:
+      - --config
+      - /etc/proxyctl/controller.yaml
+      - --ui-listen
+      - 0.0.0.0:8444
