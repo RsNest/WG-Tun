@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"proxyctl/internal/ident"
-	"proxyctl/internal/model"
-	"proxyctl/internal/store"
+	"transitforge/internal/ident"
+	"transitforge/internal/model"
+	"transitforge/internal/store"
 )
 
 func TestSQLiteCRUD(t *testing.T) {

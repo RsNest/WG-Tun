@@ -3,7 +3,7 @@ variable "RUNTIME_IMAGE" { default = "debian:bookworm-slim" }
 variable "VERSION" { default = "dev" }
 variable "COMMIT" { default = "unknown" }
 variable "CREATED" { default = "" }
-variable "SOURCE" { default = "https://github.com/RsNest/WG-Tun" }
+variable "SOURCE" { default = "https://github.com/RsNest/TransitForge" }
 variable "REGISTRY" { default = "ghcr.io/rsnest" }
 
 target "_common" {
@@ -27,28 +27,28 @@ target "test" {
 target "controller" {
   inherits = ["_common"]
   target   = "controller"
-  tags     = ["${REGISTRY}/wg-tun-controller:local"]
+  tags     = ["transitforge-controller:local"]
   platforms = ["linux/amd64"]
 }
 
 target "agent" {
   inherits = ["_common"]
   target   = "agent"
-  tags     = ["${REGISTRY}/wg-tun-agent:local"]
+  tags     = ["transitforge-agent:local"]
   platforms = ["linux/amd64"]
 }
 
-target "proxctl" {
+target "cli" {
   inherits = ["_common"]
-  target   = "proxctl"
-  tags     = ["${REGISTRY}/wg-tun-proxctl:local"]
+  target   = "cli"
+  tags     = ["transitforge-cli:local"]
   platforms = ["linux/amd64"]
 }
 
 group "default" {
-  targets = ["controller", "agent", "proxctl"]
+  targets = ["controller", "agent", "cli"]
 }
 
 group "validate" {
-  targets = ["test", "controller", "agent", "proxctl"]
+  targets = ["test", "controller", "agent", "cli"]
 }

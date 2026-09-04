@@ -1,19 +1,19 @@
 # Pull GHCR images instead of building from source.
-# Requires PROXYCTL_VERSION (immutable sha-* or release v* tag). Do not use "latest".
+# Requires TRANSITFORGE_VERSION (immutable sha-* or release v* tag). Do not use "latest".
 #
-#   PROXYCTL_VERSION=sha-abcdef1 docker compose -f docker-compose.yml -f docker-compose.release.yml pull
-#   PROXYCTL_VERSION=sha-abcdef1 docker compose -f docker-compose.yml -f docker-compose.release.yml up -d
-name: proxyctl
+#   TRANSITFORGE_VERSION=sha-abcdef1 docker compose -f docker-compose.yml -f docker-compose.release.yml pull
+#   TRANSITFORGE_VERSION=sha-abcdef1 docker compose -f docker-compose.yml -f docker-compose.release.yml up -d
+name: transitforge
 
 services:
   controller:
-    image: ghcr.io/rsnest/wg-tun-controller:${PROXYCTL_VERSION:?PROXYCTL_VERSION is required}
+    image: ghcr.io/rsnest/transitforge-controller:${TRANSITFORGE_VERSION:?TRANSITFORGE_VERSION is required}
     build: !reset null
   bootstrap:
-    image: ghcr.io/rsnest/wg-tun-proxctl:${PROXYCTL_VERSION:?PROXYCTL_VERSION is required}
+    image: ghcr.io/rsnest/transitforge-cli:${TRANSITFORGE_VERSION:?TRANSITFORGE_VERSION is required}
     build: !reset null
   agent:
-    image: ghcr.io/rsnest/wg-tun-agent:${PROXYCTL_VERSION:?PROXYCTL_VERSION is required}
+    image: ghcr.io/rsnest/transitforge-agent:${TRANSITFORGE_VERSION:?TRANSITFORGE_VERSION is required}
     build: !reset null
-  proxctl:
-    image: ghcr.io/rsnest/wg-tun-proxctl:${PROXYCTL_VERSION:?PROXYCTL_VERSION is required}
+  cli:
+    image: ghcr.io/rsnest/transitforge-cli:${TRANSITFORGE_VERSION:?TRANSITFORGE_VERSION is required}

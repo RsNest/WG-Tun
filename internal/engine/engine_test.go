@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	"proxyctl/internal/engine"
-	"proxyctl/internal/firewall"
-	"proxyctl/internal/haproxy"
-	"proxyctl/internal/model"
-	"proxyctl/internal/testhost"
-	"proxyctl/internal/wireguard"
+	"transitforge/internal/engine"
+	"transitforge/internal/firewall"
+	"transitforge/internal/haproxy"
+	"transitforge/internal/model"
+	"transitforge/internal/testhost"
+	"transitforge/internal/wireguard"
 )
 
 func desired() model.DesiredState {
@@ -25,7 +25,7 @@ func desired() model.DesiredState {
 			ID: "tun1", NodeID: nid, BackendID: bid, Type: model.TunnelWireGuard,
 			InterfaceName: "wg-a", LocalOverlayIP: "10.200.1.1", RemoteOverlayIP: "10.200.1.2",
 			ListenPort: 51820, Endpoint: "198.51.100.20:51820", AllowedIPs: []string{"10.200.1.2/32"},
-			PrivateKeyPath: "/etc/proxyctl/keys/wg-a.key", PublicKey: "abcdefghijklmnopqrstuvwxyz0123456789ABCD=",
+			PrivateKeyPath: "/etc/transitforge/keys/wg-a.key", PublicKey: "abcdefghijklmnopqrstuvwxyz0123456789ABCD=",
 			PersistentKeepalive: 25,
 		}},
 		Mappings: []model.PortMapping{{
@@ -127,7 +127,7 @@ func TestDryRunDoesNotMutate(t *testing.T) {
 
 func TestUnmanagedRuleConflict(t *testing.T) {
 	h := testhost.New()
-	h.NAT["PROXYCTL_DNAT"] = []string{`-p tcp --dport 22 -m comment --comment ssh-admin -j ACCEPT`}
+	h.NAT["TRANSITFORGE_DNAT"] = []string{`-p tcp --dport 22 -m comment --comment ssh-admin -j ACCEPT`}
 	eng := newEngine(h, t.TempDir())
 	_, err := eng.Reconcile(context.Background(), desired(), false)
 	if err == nil {

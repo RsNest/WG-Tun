@@ -14,16 +14,16 @@ Any new or changed HTTP endpoint must update, in the same change:
 
 Do not create a second architecture document at the repository root.
 
-proxyctl is a desired-state manager for the operator's own edge nodes.
+transitforge is a desired-state manager for the operator's own edge nodes.
 
 ```
-proxctl  -->  controller (TLS API, SQLite)
+transitforge  -->  controller (TLS API, SQLite)
                  ^
                  | HMAC + Bearer
                  v
     edge-agent (root)
                  |-- WireGuard (ip/wg, never wg-quick)
-                 |-- iptables managed chains PROXYCTL_{DNAT,FORWARD,SNAT}
+                 |-- iptables managed chains TRANSITFORGE_{DNAT,FORWARD,SNAT}
                  |-- HAProxy managed section + `haproxy -c`; `systemctl reload` or host watcher (`haproxy_reload`)
                  `-- SSH TUN systemd unit inspect/start (not an SSH implementation)
 ```
@@ -166,7 +166,7 @@ See `configs/example-topology.yaml`. Those IPs/ports are not hardcoded in `inter
 
 ## Web UI
 
-The operator console is compiled into `proxyctl-controller` (`internal/webui`) and is **off unless** you pass `--ui-listen`. It is a **separate HTTP listener** (default suggestion `127.0.0.1:8444`), not a path prefix on the TLS API.
+The operator console is compiled into `transitforge-controller` (`internal/webui`) and is **off unless** you pass `--ui-listen`. It is a **separate HTTP listener** (default suggestion `127.0.0.1:8444`), not a path prefix on the TLS API.
 
 Why a second listener: the API mux is Bearer + HMAC. Cookie sessions and HTML forms do not belong on that surface. A localhost HTTP UI avoids mixing `Set-Cookie` with the existing TLS authenticator and needs no change to agent clients.
 
@@ -176,7 +176,7 @@ Human sign-in is username/password. The first visit with zero human users shows 
 
 Writes require an **operator or administrator** session on the UI **and** still pass API RBAC. Readonly sessions can view inventory, plan, status, and events; POST/PATCH/DELETE from the UI are rejected with 403 before the API is called. Human user administration (`/users`) is administrator-only.
 
-Locales: English (fallback) and Russian. Chrome strings use translation keys in `internal/webui/i18n/{en,ru}.json`. Protocol names, IDs, plan lines, and raw diagnostic evidence are not translated. Preference order: user profile → `proxyctl_locale` cookie / session → `Accept-Language` → English.
+Locales: English (fallback) and Russian. Chrome strings use translation keys in `internal/webui/i18n/{en,ru}.json`. Protocol names, IDs, plan lines, and raw diagnostic evidence are not translated. Preference order: user profile → `transitforge_locale` cookie / session → `Accept-Language` → English.
 
 Navigation groups (current pages only; future Foreign Nodes / Path Checks / Routes are not stubbed):
 
@@ -199,8 +199,8 @@ Planning that is **not** yet the implemented contract lives in `docs/ROADMAP.md`
 GitHub
   -> GitHub Actions
   -> Docker Buildx (linux/amd64)
-  -> GHCR (ghcr.io/rsnest/wg-tun-{controller,agent,proxctl})
-  -> explicit operator deployment (`PROXYCTL_VERSION=sha-…` or `v…`)
+  -> GHCR (ghcr.io/rsnest/wg-tun-{controller,agent,transitforge})
+  -> explicit operator deployment (`TRANSITFORGE_VERSION=sha-…` or `v…`)
 ```
 
 Production and lab runtime hosts **pull images**. They do not compile Go. Native host/systemd integration remains required for HAProxy reload and SSH TUN units; the agent container does not mount the systemd control socket and does not replace those host units. See `docs/DOCKER.md`.

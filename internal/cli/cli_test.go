@@ -13,7 +13,7 @@ func TestVersionDoesNotNeedController(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := out.String()
-	if !strings.Contains(got, "proxctl") || !strings.Contains(got, "dev") {
+	if !strings.Contains(got, "transitforge") || !strings.Contains(got, "dev") {
 		t.Fatalf("version output %q", got)
 	}
 }
@@ -24,10 +24,10 @@ func TestApplyEnvReadsTokenFileAndInsecure(t *testing.T) {
 	if err := os.WriteFile(tok, []byte("secret-token\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("PROXYCTL_CONTROLLER", "https://controller:8443")
-	t.Setenv("PROXYCTL_TOKEN_FILE", tok)
-	t.Setenv("PROXYCTL_TOKEN", "")
-	t.Setenv("PROXYCTL_INSECURE", "true")
+	t.Setenv("TRANSITFORGE_CONTROLLER", "https://controller:8443")
+	t.Setenv("TRANSITFORGE_TOKEN_FILE", tok)
+	t.Setenv("TRANSITFORGE_TOKEN", "")
+	t.Setenv("TRANSITFORGE_INSECURE", "true")
 	opt, err := applyEnv(Options{})
 	if err != nil {
 		t.Fatal(err)
@@ -44,8 +44,8 @@ func TestApplyEnvReadsTokenFileAndInsecure(t *testing.T) {
 }
 
 func TestApplyEnvFlagsWinOverEnv(t *testing.T) {
-	t.Setenv("PROXYCTL_CONTROLLER", "https://from-env:8443")
-	t.Setenv("PROXYCTL_INSECURE", "false")
+	t.Setenv("TRANSITFORGE_CONTROLLER", "https://from-env:8443")
+	t.Setenv("TRANSITFORGE_INSECURE", "false")
 	opt, err := applyEnv(Options{Controller: "https://from-flag:8443", Insecure: true, Token: "flag-token"})
 	if err != nil {
 		t.Fatal(err)

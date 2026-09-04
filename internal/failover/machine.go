@@ -3,9 +3,9 @@ package failover
 import (
 	"time"
 
-	"proxyctl/internal/health"
-	"proxyctl/internal/logging"
-	"proxyctl/internal/model"
+	"transitforge/internal/health"
+	"transitforge/internal/logging"
+	"transitforge/internal/model"
 )
 
 type Input struct {

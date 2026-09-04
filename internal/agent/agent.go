@@ -7,15 +7,15 @@ import (
 	"strings"
 	"time"
 
-	"proxyctl/internal/client"
-	"proxyctl/internal/config"
-	"proxyctl/internal/engine"
-	"proxyctl/internal/failover"
-	"proxyctl/internal/logging"
-	"proxyctl/internal/metrics"
-	"proxyctl/internal/model"
-	"proxyctl/internal/reconcile"
-	"proxyctl/internal/version"
+	"transitforge/internal/client"
+	"transitforge/internal/config"
+	"transitforge/internal/engine"
+	"transitforge/internal/failover"
+	"transitforge/internal/logging"
+	"transitforge/internal/metrics"
+	"transitforge/internal/model"
+	"transitforge/internal/reconcile"
+	"transitforge/internal/version"
 )
 
 type Discoverer interface {
@@ -193,7 +193,7 @@ func LoadToken(path string) (string, error) {
 	return tok, nil
 }
 
-func UserAgent() string { return "proxyctl-agent/" + version.Version }
+func UserAgent() string { return "transitforge-agent/" + version.Version }
 
 func (a *Agent) observe(success bool, actual model.ActualState) {
 	if a.metrics == nil {

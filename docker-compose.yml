@@ -1,22 +1,22 @@
 # Local source-build lab (Docker Engine + Compose). Canonical images:
-#   ghcr.io/rsnest/wg-tun-{controller,agent,proxctl}
-# Release pull (no build): docker-compose.release.yml + PROXYCTL_VERSION.
+#   ghcr.io/rsnest/wg-tun-{controller,agent,transitforge}
+# Release pull (no build): docker-compose.release.yml + TRANSITFORGE_VERSION.
 # Live Linux overlay: docker-compose.live.yml (see docs/DOCKER.md).
-name: proxyctl
+name: transitforge
 
 services:
   controller:
     build:
       context: .
       target: controller
-    image: proxyctl-controller:local
+    image: transitforge-controller:local
     hostname: controller
     ports:
       - "8443:8443"
     volumes:
-      - proxyctl-data:/data
+      - transitforge-data:/data
     healthcheck:
-      test: ["CMD", "/usr/local/bin/proxyctl-controller", "healthcheck", "--url", "https://127.0.0.1:8443/readyz", "-k"]
+      test: ["CMD", "/usr/local/bin/transitforge-controller", "healthcheck", "--url", "https://127.0.0.1:8443/readyz", "-k"]
       interval: 3s
       timeout: 2s
       retries: 10
@@ -26,18 +26,18 @@ services:
   bootstrap:
     build:
       context: .
-      target: proxctl
-    image: proxyctl-proxctl:local
+      target: cli
+    image: transitforge-cli:local
     depends_on:
       controller:
         condition: service_healthy
     volumes:
-      - proxyctl-data:/data:ro
+      - transitforge-data:/data:ro
     environment:
-      PROXYCTL_CONTROLLER: https://controller:8443
-      PROXYCTL_TOKEN_FILE: /data/bootstrap.token
-      PROXYCTL_INSECURE: "true"
-      PROXYCTL_NODE_NAME: ru-edge-1
+      TRANSITFORGE_CONTROLLER: https://controller:8443
+      TRANSITFORGE_TOKEN_FILE: /data/bootstrap.token
+      TRANSITFORGE_INSECURE: "true"
+      TRANSITFORGE_NODE_NAME: ru-edge-1
     entrypoint: ["/usr/local/bin/docker-bootstrap.sh"]
     restart: "no"
 
@@ -45,7 +45,7 @@ services:
     build:
       context: .
       target: agent
-    image: proxyctl-agent:local
+    image: transitforge-agent:local
     hostname: ru-edge-1
     depends_on:
       controller:
@@ -55,20 +55,20 @@ services:
     ports:
       - "9101:9101"
     volumes:
-      - proxyctl-data:/data:ro
-      - ./configs/docker-agent.yaml:/etc/proxyctl/agent.yaml:ro
+      - transitforge-data:/data:ro
+      - ./configs/docker-agent.yaml:/etc/transitforge/agent.yaml:ro
     restart: unless-stopped
 
-  proxctl:
-    image: proxyctl-proxctl:local
+  cli:
+    image: transitforge-cli:local
     profiles: ["cli"]
     depends_on:
       controller:
         condition: service_healthy
     volumes:
-      - proxyctl-data:/data:ro
+      - transitforge-data:/data:ro
     working_dir: /data
-    entrypoint: ["proxctl", "--controller", "https://controller:8443", "--token-file", "/data/bootstrap.token", "--insecure"]
+    entrypoint: ["transitforge", "--controller", "https://controller:8443", "--token-file", "/data/bootstrap.token", "--insecure"]
 
   prometheus:
     image: prom/prometheus:v2.55.1
@@ -83,4 +83,4 @@ services:
       - agent
 
 volumes:
-  proxyctl-data:
+  transitforge-data:

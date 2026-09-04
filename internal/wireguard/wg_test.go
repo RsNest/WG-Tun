@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"proxyctl/internal/model"
-	"proxyctl/internal/testhost"
-	"proxyctl/internal/wireguard"
+	"transitforge/internal/model"
+	"transitforge/internal/testhost"
+	"transitforge/internal/wireguard"
 )
 
 func TestWGApplyDiscover(t *testing.T) {
@@ -17,7 +17,7 @@ func TestWGApplyDiscover(t *testing.T) {
 		ID: "t1", NodeID: "n", BackendID: "b", Type: model.TunnelWireGuard,
 		InterfaceName: "wg-a", LocalOverlayIP: "10.200.1.1", RemoteOverlayIP: "10.200.1.2",
 		ListenPort: 51820, Endpoint: "198.51.100.20:51820", AllowedIPs: []string{"10.200.1.2/32"},
-		PrivateKeyPath: "/etc/proxyctl/keys/wg-a.key", PublicKey: "pubKEY0123456789abcdefghijklmnopqrstuv",
+		PrivateKeyPath: "/etc/transitforge/keys/wg-a.key", PublicKey: "pubKEY0123456789abcdefghijklmnopqrstuv",
 	}
 	if err := m.Apply(context.Background(), tunn); err != nil {
 		t.Fatal(err)
@@ -37,7 +37,7 @@ func TestWGApplyDiscover(t *testing.T) {
 	}
 	for _, c := range h.Calls {
 		j := strings.Join(c, " ")
-		if strings.Contains(strings.ToLower(j), "private-key") && !strings.Contains(j, "/etc/proxyctl/keys/wg-a.key") {
+		if strings.Contains(strings.ToLower(j), "private-key") && !strings.Contains(j, "/etc/transitforge/keys/wg-a.key") {
 			t.Fatalf("private key material in args: %s", j)
 		}
 		if strings.Contains(j, "BEGIN") {

@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"proxyctl/internal/failover"
-	"proxyctl/internal/model"
+	"transitforge/internal/failover"
+	"transitforge/internal/model"
 )
 
 func TestLockAndStateFile(t *testing.T) {

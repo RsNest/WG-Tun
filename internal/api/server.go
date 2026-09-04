@@ -11,12 +11,12 @@ import (
 	"sync"
 	"time"
 
-	"proxyctl/internal/auth"
-	"proxyctl/internal/config"
-	"proxyctl/internal/logging"
-	"proxyctl/internal/model"
-	"proxyctl/internal/store"
-	"proxyctl/internal/version"
+	"transitforge/internal/auth"
+	"transitforge/internal/config"
+	"transitforge/internal/logging"
+	"transitforge/internal/model"
+	"transitforge/internal/store"
+	"transitforge/internal/version"
 )
 
 type Capabilities struct {

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"proxyctl/internal/metrics"
-	"proxyctl/internal/model"
+	"transitforge/internal/metrics"
+	"transitforge/internal/model"
 )
 
 func TestMetricsExpose(t *testing.T) {
@@ -27,7 +27,7 @@ func TestMetricsExpose(t *testing.T) {
 	defer resp.Body.Close()
 	b, _ := io.ReadAll(resp.Body)
 	s := string(b)
-	for _, n := range []string{"proxyctl_agent_up", "proxyctl_reconcile_success", "proxyctl_wireguard_handshake_age_seconds", "proxyctl_transport_state"} {
+	for _, n := range []string{"transitforge_agent_up", "transitforge_reconcile_success", "transitforge_wireguard_handshake_age_seconds", "transitforge_transport_state"} {
 		if !strings.Contains(s, n) {
 			t.Fatalf("missing %s in %s", n, s)
 		}

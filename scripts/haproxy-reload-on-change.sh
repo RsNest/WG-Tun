@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Host-side HAProxy reload after proxyctl writes /etc/haproxy/haproxy.cfg.
-# Pair with deploy/systemd/proxyctl-haproxy-reload.path. The live Docker agent
+# Host-side HAProxy reload after transitforge writes /etc/haproxy/haproxy.cfg.
+# Pair with deploy/systemd/transitforge-haproxy-reload.path. The live Docker agent
 # never calls systemctl; this script is the only reload path.
 #
 # Protocol: flock → debounce until the file hash is stable → skip if hash
@@ -11,17 +11,17 @@ set -euo pipefail
 
 readonly CFG=/etc/haproxy/haproxy.cfg
 readonly UNIT=haproxy
-readonly LOCK=/run/proxyctl/haproxy-reload.lock
-readonly DEBOUNCE_STATE=/run/proxyctl/haproxy-reload.debounce
-readonly STATE=/var/lib/proxyctl/haproxy-reload.state
-readonly LAST_GOOD=/var/lib/proxyctl/haproxy.last-good.cfg
-readonly BACKUP_DIR=/var/lib/proxyctl/haproxy-backups
+readonly LOCK=/run/transitforge/haproxy-reload.lock
+readonly DEBOUNCE_STATE=/run/transitforge/haproxy-reload.debounce
+readonly STATE=/var/lib/transitforge/haproxy-reload.state
+readonly LAST_GOOD=/var/lib/transitforge/haproxy.last-good.cfg
+readonly BACKUP_DIR=/var/lib/transitforge/haproxy-backups
 readonly SETTLE_SEC=2
 readonly MAX_WAIT_SEC=12
 readonly BACKUP_KEEP=20
 
 log() {
-	printf 'proxyctl-haproxy-reload: %s\n' "$*" >&2
+	printf 'transitforge-haproxy-reload: %s\n' "$*" >&2
 }
 
 haproxy_bin() {
@@ -124,7 +124,7 @@ restore_last_good() {
 		return 1
 	fi
 	log "event=restore_on_failure_triggered"
-	tmp="${CFG}.proxyctl-restore"
+	tmp="${CFG}.transitforge-restore"
 	cp -a -- "$LAST_GOOD" "$tmp"
 	mv -f -- "$tmp" "$CFG"
 	log "event=restore_on_failure_done"
@@ -174,7 +174,7 @@ run_validate() {
 	if ! "$bin" -c -f "$CFG" >"$errf" 2>&1; then
 		log "event=validation_failed hash=${1}"
 		while IFS= read -r line; do
-			printf 'proxyctl-haproxy-reload: event=validation_output msg=%s\n' "$line" >&2
+			printf 'transitforge-haproxy-reload: event=validation_output msg=%s\n' "$line" >&2
 		done <"$errf"
 		rm -f -- "$errf"
 		return 1
@@ -194,7 +194,7 @@ run_reload() {
 	if ! /usr/bin/systemctl reload "$UNIT" >"$errf" 2>&1; then
 		log "event=reload_failed unit=${UNIT}"
 		while IFS= read -r line; do
-			printf 'proxyctl-haproxy-reload: event=reload_output msg=%s\n' "$line" >&2
+			printf 'transitforge-haproxy-reload: event=reload_output msg=%s\n' "$line" >&2
 		done <"$errf"
 		rm -f -- "$errf"
 		return 1
@@ -203,7 +203,7 @@ run_reload() {
 	log "event=reload_succeeded unit=${UNIT}"
 }
 
-mkdir -p -- /run/proxyctl /var/lib/proxyctl "$BACKUP_DIR"
+mkdir -p -- /run/transitforge /var/lib/transitforge "$BACKUP_DIR"
 
 exec 9>"$LOCK"
 if ! flock -n 9; then

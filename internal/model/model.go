@@ -8,7 +8,7 @@ import (
 // ID is a string UUID assigned by the controller.
 type ID string
 
-// Node is an edge host that runs proxyctl-agent.
+// Node is an edge host that runs transitforge-agent.
 type Node struct {
 	ID        ID                `json:"id"`
 	Name      string            `json:"name"`

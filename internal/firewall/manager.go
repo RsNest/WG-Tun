@@ -3,18 +3,24 @@ package firewall
 import (
 	"context"
 	"fmt"
+	"strings"
 
-	"proxyctl/internal/model"
-	"proxyctl/internal/reconcile"
+	"transitforge/internal/model"
+	"transitforge/internal/reconcile"
 )
 
 const (
 	TableNAT     = "nat"
 	TableFilter  = "filter"
-	ChainDNAT    = "PROXYCTL_DNAT"
-	ChainForward = "PROXYCTL_FORWARD"
-	ChainSNAT    = "PROXYCTL_SNAT"
-	JumpComment  = "proxyctl:jump"
+	ChainDNAT    = "TRANSITFORGE_DNAT"
+	ChainForward = "TRANSITFORGE_FORWARD"
+	ChainSNAT    = "TRANSITFORGE_SNAT"
+	JumpComment  = "transitforge:jump"
+	// Pre-rebrand iptables names. Discover/delete still recognize them; new writes use the TRANSITFORGE_* names.
+	legacyChainDNAT    = "PROXYCTL_DNAT"
+	legacyChainForward = "PROXYCTL_FORWARD"
+	legacyChainSNAT    = "PROXYCTL_SNAT"
+	legacyJumpComment  = "proxyctl:jump"
 )
 
 type Counters struct {
@@ -39,6 +45,10 @@ type Manager interface {
 
 func MappingComment(id model.ID) string {
 	return reconcile.MappingComment(id)
+}
+
+func isManagedMappingComment(cmt string) bool {
+	return strings.HasPrefix(cmt, "transitforge:mapping:") || strings.HasPrefix(cmt, "proxyctl:mapping:")
 }
 
 func MappingSpec(m model.PortMapping, backendAddr string) string {

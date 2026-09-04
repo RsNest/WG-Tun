@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"proxyctl/internal/auth"
-	"proxyctl/internal/store"
+	"transitforge/internal/auth"
+	"transitforge/internal/store"
 )
 
 func TestHMACRoundTrip(t *testing.T) {

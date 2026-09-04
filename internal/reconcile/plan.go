@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"proxyctl/internal/model"
+	"transitforge/internal/model"
 )
 
 type ActionKind string
@@ -210,7 +210,7 @@ func Diff(desired model.DesiredState, actual model.ActualState) Plan {
 }
 
 func MappingComment(id model.ID) string {
-	return "proxyctl:mapping:" + string(id)
+	return "transitforge:mapping:" + string(id)
 }
 
 func mappingRuleSpec(m model.PortMapping, b model.Backend) string {

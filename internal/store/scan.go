@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"proxyctl/internal/model"
+	"transitforge/internal/model"
 )
 
 type scanner interface {

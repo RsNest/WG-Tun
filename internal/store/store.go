@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"proxyctl/internal/model"
+	"transitforge/internal/model"
 )
 
 // Store is the persistence interface. SQLite is the MVP backend; a later

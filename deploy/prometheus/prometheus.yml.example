@@ -2,12 +2,12 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: proxyctl-controller
+  - job_name: transitforge-controller
     scheme: https
     tls_config:
       insecure_skip_verify: true
     static_configs:
       - targets: ["127.0.0.1:8443"]
-  - job_name: proxyctl-agent
+  - job_name: transitforge-agent
     static_configs:
       - targets: ["127.0.0.1:9101"]

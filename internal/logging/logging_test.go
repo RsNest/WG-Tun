@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"proxyctl/internal/logging"
+	"transitforge/internal/logging"
 )
 
 func TestRedactSecrets(t *testing.T) {

@@ -22,13 +22,13 @@ tunnels:
     allowed_ips: ["10.200.1.2/32"]
     persistent_keepalive: 25
     priority: 10
-    private_key_path: /etc/proxyctl/keys/wg-a.key
+    private_key_path: /etc/transitforge/keys/wg-a.key
   - backend: backend-b
     type: SSH_TUN
     interface_name: tun-b
     local_overlay_ip: 10.200.2.1
     remote_overlay_ip: 10.200.2.2
-    service_name: proxyctl-ssh-backend-b.service
+    service_name: transitforge-ssh-backend-b.service
     priority: 20
 
 mappings:

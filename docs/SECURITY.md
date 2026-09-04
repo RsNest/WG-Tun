@@ -7,14 +7,14 @@ Implemented: **Bearer token + HMAC-SHA256** over `timestamp + "\n" + method + "\
 Headers:
 
 - `Authorization: Bearer <token>`
-- `X-Proxyctl-Timestamp` (unix seconds, max skew 5m)
-- `X-Proxyctl-Signature` (hex HMAC-SHA256 using the bearer token as key)
+- `X-TransitForge-Timestamp` (unix seconds, max skew 5m)
+- `X-TransitForge-Signature` (hex HMAC-SHA256 using the bearer token as key)
 
 mTLS is not implemented (see remaining work).
 
 ## Tokens
 
-Bootstrap operator token is generated once, written to a 0600 file, and stored **bcrypt-hashed** in SQLite. Operators mint additional tokens with `proxctl token add --name NAME --role agent|readonly|operator` (`POST /api/v1/tokens`). Plaintext is returned once and never stored. Live agents must use an `agent` token, not the bootstrap operator secret. WireGuard private keys are **file path references only**; `wg set … private-key <path>` is used, never a key on the command line. Logs redact obvious secret material.
+Bootstrap operator token is generated once, written to a 0600 file, and stored **bcrypt-hashed** in SQLite. Operators mint additional tokens with `transitforge token add --name NAME --role agent|readonly|operator` (`POST /api/v1/tokens`). Plaintext is returned once and never stored. Live agents must use an `agent` token, not the bootstrap operator secret. WireGuard private keys are **file path references only**; `wg set … private-key <path>` is used, never a key on the command line. Logs redact obvious secret material.
 
 ## RBAC
 
@@ -34,8 +34,8 @@ Mutating API endpoints are token-bucket limited per client IP.
 
 ## HAProxy / firewall
 
-Managed HAProxy is confined to `# BEGIN/END PROXYCTL MANAGED`. Unrelated config is preserved. Bind collisions in unmanaged config are `CONFLICT`. Firewall uses dedicated chains and comment tags `proxyctl:mapping:<id>`; no flush of PREROUTING/FORWARD/POSTROUTING.
+Managed HAProxy is confined to `# BEGIN/END TRANSITFORGE MANAGED`. Unrelated config is preserved. Bind collisions in unmanaged config are `CONFLICT`. Firewall uses dedicated chains and comment tags `transitforge:mapping:<id>`; no flush of PREROUTING/FORWARD/POSTROUTING.
 
 ## Failover lock
 
-`/run/proxyctl/transport.lock` is acquired with exclusive `flock` (LockFileEx on Windows). Acquire timeout **5s**. Metadata heartbeat TTL **30s** is informational; a live lock is never stolen. Kernel releases flock when the holder process dies.
+`/run/transitforge/transport.lock` is acquired with exclusive `flock` (LockFileEx on Windows). Acquire timeout **5s**. Metadata heartbeat TTL **30s** is informational; a live lock is never stolen. Kernel releases flock when the holder process dies.

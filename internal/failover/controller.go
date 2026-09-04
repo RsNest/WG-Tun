@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"proxyctl/internal/engine"
-	"proxyctl/internal/health"
-	"proxyctl/internal/logging"
-	"proxyctl/internal/model"
-	"proxyctl/internal/sshtun"
+	"transitforge/internal/engine"
+	"transitforge/internal/health"
+	"transitforge/internal/logging"
+	"transitforge/internal/model"
+	"transitforge/internal/sshtun"
 )
 
 type Controller struct {

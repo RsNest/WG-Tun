@@ -5,13 +5,13 @@ rule_files:
   - /etc/prometheus/alerts.yml
 
 scrape_configs:
-  - job_name: proxyctl-controller
+  - job_name: transitforge-controller
     scheme: https
     tls_config:
       insecure_skip_verify: true
     static_configs:
       - targets: ["controller:8443"]
-  - job_name: proxyctl-agent
+  - job_name: transitforge-agent
     scheme: http
     static_configs:
       - targets: ["agent:9101"]

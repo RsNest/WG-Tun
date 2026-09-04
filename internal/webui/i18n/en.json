@@ -37,8 +37,8 @@
     "agent": "Agent"
   },
   "login": {
-    "title": "Sign in",
-    "lead": "Sign in with your proxyctl username and password.",
+    "title": "Sign in to TransitForge",
+    "lead": "Enter your account credentials.",
     "username": "Username",
     "password": "Password",
     "submit": "Continue",
@@ -61,7 +61,7 @@
   },
   "setup": {
     "title": "Create administrator",
-    "lead": "This controller has no human users yet. Create the first administrator account.",
+    "lead": "Create your TransitForge administrator account.",
     "username": "Username",
     "display_name": "Display name",
     "password": "Password",
@@ -262,11 +262,11 @@
   },
   "users": {
     "title": "Users & Access",
-    "lead": "Human accounts for this Web UI. API tokens remain a separate machine identity and are minted with proxctl.",
+    "lead": "Human accounts for this Web UI. API tokens remain a separate machine identity and are minted with transitforge.",
     "empty": "No human users yet.",
     "create": "Create user",
     "tokens": "API tokens",
-    "tokens_lead": "Token secrets are never shown again after mint. Use proxctl token add for new machine tokens.",
+    "tokens_lead": "Token secrets are never shown again after mint. Use transitforge token add for new machine tokens.",
     "tokens_empty": "No API tokens listed.",
     "totp_on": "Enabled",
     "totp_off": "Not enabled"

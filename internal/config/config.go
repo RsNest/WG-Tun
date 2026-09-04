@@ -110,7 +110,7 @@ func DefaultController() *ControllerConfig {
 func DefaultAgent() *AgentConfig {
 	return &AgentConfig{
 		ReconcileInterval: Duration(10 * time.Second),
-		StateDir:          "/run/proxyctl",
+		StateDir:          "/run/transitforge",
 		HaproxyConfig:     "/etc/haproxy/haproxy.cfg",
 		HaproxyReload:     "systemctl",
 		TLS:               AgentTLS{},
@@ -167,8 +167,42 @@ func (c *AgentConfig) Validate() error {
 	return nil
 }
 
+const (
+	dbFileName       = "transitforge.db"
+	legacyDBFileName = "proxyctl.db" // one-time rename of the pre-rebrand SQLite file
+)
+
 func (c *ControllerConfig) DBPath() string {
-	return filepath.Join(c.DataDir, "proxyctl.db")
+	return ResolveDBPath(c.DataDir)
+}
+
+// ResolveDBPath returns the SQLite path under dataDir.
+// If only the pre-rebrand filename exists, it is renamed (including WAL/SHM).
+func ResolveDBPath(dataDir string) string {
+	newPath := filepath.Join(dataDir, dbFileName)
+	oldPath := filepath.Join(dataDir, legacyDBFileName)
+	if fileExists(newPath) {
+		return newPath
+	}
+	if fileExists(oldPath) {
+		if err := renameSQLiteFile(oldPath, newPath); err != nil {
+			return oldPath
+		}
+	}
+	return newPath
+}
+
+func renameSQLiteFile(oldPath, newPath string) error {
+	if err := os.Rename(oldPath, newPath); err != nil {
+		return err
+	}
+	for _, suf := range []string{"-wal", "-shm"} {
+		from, to := oldPath+suf, newPath+suf
+		if fileExists(from) {
+			_ = os.Rename(from, to)
+		}
+	}
+	return nil
 }
 
 func loadYAML(path string, out any) error {
@@ -203,7 +237,7 @@ func EnsureSelfSigned(certFile, keyFile, listen string, extraDNS []string) error
 	dns := uniqueDNS(append([]string{"localhost"}, extraDNS...))
 	tpl := &x509.Certificate{
 		SerialNumber:          big.NewInt(time.Now().UnixNano()),
-		Subject:               pkix.Name{CommonName: "proxyctl-controller", Organization: []string{"proxyctl"}},
+		Subject:               pkix.Name{CommonName: "transitforge-controller", Organization: []string{"TransitForge"}},
 		NotBefore:             time.Now().Add(-time.Hour),
 		NotAfter:              time.Now().Add(365 * 24 * time.Hour),
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,

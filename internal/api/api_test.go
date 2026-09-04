@@ -10,15 +10,15 @@ import (
 
 	"net/http/httptest"
 
-	"proxyctl/internal/api"
-	"proxyctl/internal/auth"
-	"proxyctl/internal/cli"
-	"proxyctl/internal/client"
-	"proxyctl/internal/config"
-	"proxyctl/internal/logging"
-	"proxyctl/internal/model"
-	"proxyctl/internal/reconcile"
-	"proxyctl/internal/store"
+	"transitforge/internal/api"
+	"transitforge/internal/auth"
+	"transitforge/internal/cli"
+	"transitforge/internal/client"
+	"transitforge/internal/config"
+	"transitforge/internal/logging"
+	"transitforge/internal/model"
+	"transitforge/internal/reconcile"
+	"transitforge/internal/store"
 )
 
 func setup(t *testing.T) (*client.Client, string, string) {
@@ -77,7 +77,7 @@ func TestE2ENodeBackendMappingDryRun(t *testing.T) {
 	if _, err := c.CreateTunnel(ctx, model.Tunnel{
 		NodeID: n.ID, BackendID: b.ID, Type: model.TunnelWireGuard, InterfaceName: "wg-a",
 		LocalOverlayIP: "10.200.1.1", RemoteOverlayIP: "10.200.1.2", ListenPort: 51820,
-		Endpoint: "198.51.100.20:51820", AllowedIPs: []string{"10.200.1.2/32"}, PrivateKeyPath: "/etc/proxyctl/keys/wg-a.key",
+		Endpoint: "198.51.100.20:51820", AllowedIPs: []string{"10.200.1.2/32"}, PrivateKeyPath: "/etc/transitforge/keys/wg-a.key",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -452,7 +452,7 @@ func TestMappingEnabledDesiredStateAndPlan(t *testing.T) {
 	if err := c.PutActualState(ctx, string(n.ID), model.ActualState{
 		NodeID: n.ID,
 		FirewallRules: []model.FirewallRule{{
-			Chain: "PROXYCTL_DNAT", Comment: comment, Spec: spec, Managed: true,
+			Chain: "TRANSITFORGE_DNAT", Comment: comment, Spec: spec, Managed: true,
 		}},
 	}); err != nil {
 		t.Fatal(err)

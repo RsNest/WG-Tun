@@ -10,14 +10,14 @@ import (
 	"strings"
 	"syscall"
 
-	"proxyctl/internal/api"
-	"proxyctl/internal/auth"
-	"proxyctl/internal/config"
-	"proxyctl/internal/logging"
-	"proxyctl/internal/metrics"
-	"proxyctl/internal/store"
-	"proxyctl/internal/version"
-	"proxyctl/internal/webui"
+	"transitforge/internal/api"
+	"transitforge/internal/auth"
+	"transitforge/internal/config"
+	"transitforge/internal/logging"
+	"transitforge/internal/metrics"
+	"transitforge/internal/store"
+	"transitforge/internal/version"
+	"transitforge/internal/webui"
 )
 
 func main() {

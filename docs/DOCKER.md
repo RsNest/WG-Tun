@@ -8,9 +8,9 @@ Host `go test` / `go build` remains optional for local iteration.
 
 | Component | GHCR name | Runtime user |
 | --- | --- | --- |
-| controller | `ghcr.io/rsnest/wg-tun-controller` | non-root `proxyctl` (uid 65532); entrypoint chowns `/data` |
-| agent | `ghcr.io/rsnest/wg-tun-agent` | root (live overlay needs NET_ADMIN / host net) |
-| proxctl | `ghcr.io/rsnest/wg-tun-proxctl` | root; also used as the Compose bootstrap one-shot |
+| controller | `ghcr.io/rsnest/transitforge-controller` | non-root `transitforge` (uid 65532); entrypoint chowns `/data` |
+| agent | `ghcr.io/rsnest/transitforge-agent` | root (live overlay needs NET_ADMIN / host net) |
+| transitforge | `ghcr.io/rsnest/transitforge-cli` | root; also used as the Compose bootstrap one-shot |
 
 Platform published in this phase: **linux/amd64**. The Dockerfile is structured so linux/arm64 can be added later without a second build system.
 
@@ -29,9 +29,9 @@ Do not deploy from a mutable `latest` tag. The publish workflow sets `latest=fal
 
 ```bash
 docker build --target test .
-docker build --target controller -t ghcr.io/rsnest/wg-tun-controller:local .
-docker build --target agent -t ghcr.io/rsnest/wg-tun-agent:local .
-docker build --target proxctl -t ghcr.io/rsnest/wg-tun-proxctl:local .
+docker build --target controller -t ghcr.io/rsnest/transitforge-controller:local .
+docker build --target agent -t ghcr.io/rsnest/transitforge-agent:local .
+docker build --target cli -t ghcr.io/rsnest/transitforge-cli:local .
 ```
 
 Optional wrapper: `make test` / `make images` / `make smoke`.
@@ -40,8 +40,8 @@ Source-build lab (control plane, agent `dry_run_only: true`):
 
 ```bash
 docker compose up -d --build
-docker compose --profile cli run --rm proxctl version
-docker compose --profile cli run --rm proxctl apply --node ru-edge-1 --dry-run
+docker compose --profile cli run --rm transitforge version
+docker compose --profile cli run --rm transitforge apply --node ru-edge-1 --dry-run
 ```
 
 Optional Web UI (HTTP, separate port; not required for controller startup):
@@ -54,8 +54,8 @@ Then open `http://127.0.0.1:8444`. Bind the host publish to loopback in producti
 
 That starts:
 
-1. **controller** — TLS API on `https://localhost:8443`, SQLite + bootstrap token in volume `proxyctl-data`. Healthcheck is `proxyctl-controller healthcheck --url https://127.0.0.1:8443/readyz -k` (no curl in the image). `/readyz` waits for SQLite + init.
-2. **bootstrap** — one-shot `proxctl` image that waits for `/readyz`, registers lab inventory, prints a dry-run plan, exits.
+1. **controller** — TLS API on `https://localhost:8443`, SQLite + bootstrap token in volume `transitforge-data`. Healthcheck is `transitforge-controller healthcheck --url https://127.0.0.1:8443/readyz -k` (no curl in the image). `/readyz` waits for SQLite + init.
+2. **bootstrap** — one-shot `transitforge` image that waits for `/readyz`, registers lab inventory, prints a dry-run plan, exits.
 3. **agent** — polls desired state every 10s. Default `dry_run_only: true`. Metrics `http://localhost:9101`.
 
 ## CI/CD
@@ -82,7 +82,7 @@ Production/lab hosts consume GHCR images. They do not compile source.
 Controller:
 
 ```bash
-export PROXYCTL_VERSION=sha-abcdef1   # or v0.1.0
+export TRANSITFORGE_VERSION=sha-abcdef1   # or v0.1.0
 docker compose -f deploy/compose/controller.yml pull
 docker compose -f deploy/compose/controller.yml up -d
 ```
@@ -99,15 +99,15 @@ Optional UI:
 docker compose -f deploy/compose/controller.yml -f deploy/compose/controller.ui.yml up -d
 ```
 
-Lab stack from GHCR (same version on controller, agent, proxctl):
+Lab stack from GHCR (same version on controller, agent, transitforge):
 
 ```bash
-export PROXYCTL_VERSION=sha-abcdef1
+export TRANSITFORGE_VERSION=sha-abcdef1
 docker compose -f docker-compose.yml -f docker-compose.release.yml pull
 docker compose -f docker-compose.yml -f docker-compose.release.yml up -d
 ```
 
-Do not hardcode `main` as `PROXYCTL_VERSION`.
+Do not hardcode `main` as `TRANSITFORGE_VERSION`.
 
 ## Update
 
@@ -120,7 +120,7 @@ Image publication is automatic. Production replacement is **manual**.
 5. Check `/healthz`, `/readyz`, and a plan.
 
 ```bash
-export PROXYCTL_VERSION=sha-89abcde
+export TRANSITFORGE_VERSION=sha-89abcde
 docker compose -f deploy/compose/controller.yml pull
 docker compose -f deploy/compose/controller.yml up -d
 ```
@@ -132,8 +132,8 @@ Do not run Watchtower or any automatic live-agent updater.
 Rollback is selecting the previous immutable tag:
 
 ```bash
-# previous: PROXYCTL_VERSION=sha-1234567
-export PROXYCTL_VERSION=sha-1234567
+# previous: TRANSITFORGE_VERSION=sha-1234567
+export TRANSITFORGE_VERSION=sha-1234567
 docker compose -f deploy/compose/controller.yml pull
 docker compose -f deploy/compose/controller.yml up -d
 ```
@@ -154,7 +154,7 @@ The live agent does **not** mount the host systemd control socket. It does not t
 
 `haproxy_reload: external`: the agent writes `/etc/haproxy` (bind-mounted) and runs `haproxy -c`. A host path unit reloads HAProxy when the file changes. Production edges should prefer a systemd agent; this overlay is for Linux lab hosts.
 
-Agent image packages (from actual `CommandRunner` usage): `ip` (iproute2), `wg` (wireguard-tools), `iptables` / `iptables-save` / `iptables-restore`, `haproxy` (`-c` only), `ping` (overlay health). Controller and proxctl images do not include those tools.
+Agent image packages (from actual `CommandRunner` usage): `ip` (iproute2), `wg` (wireguard-tools), `iptables` / `iptables-save` / `iptables-restore`, `haproxy` (`-c` only), `ping` (overlay health). Controller and transitforge images do not include those tools.
 
 ## TLS names
 
@@ -166,18 +166,18 @@ Self-signed certs include SAN `localhost`, `127.0.0.1`, `::1`, plus `tls.dns_nam
 
 - `configs/docker-controller.yaml` — listen `0.0.0.0:8443`, data `/data`, SAN `controller`
 - `configs/docker-agent.yaml` — `dry_run_only: true`, `https://controller:8443`
-- `configs/docker-agent.live.yaml` — `dry_run_only: true`, `https://127.0.0.1:8443`, `haproxy_reload: external`, `token_file: /etc/proxyctl/agent.token`
+- `configs/docker-agent.live.yaml` — `dry_run_only: true`, `https://127.0.0.1:8443`, `haproxy_reload: external`, `token_file: /etc/transitforge/agent.token`
 
-Token path for the default (bridge) agent is `/data/bootstrap.token`. The live overlay uses `/etc/proxyctl/agent.token` (agent-role), never the bootstrap operator token.
+Token path for the default (bridge) agent is `/data/bootstrap.token`. The live overlay uses `/etc/transitforge/agent.token` (agent-role), never the bootstrap operator token.
 
-`proxctl` reads `PROXYCTL_CONTROLLER`, `PROXYCTL_TOKEN`, `PROXYCTL_TOKEN_FILE`, `PROXYCTL_INSECURE`. Flags override env.
+`transitforge` reads `TRANSITFORGE_CONTROLLER`, `TRANSITFORGE_TOKEN`, `TRANSITFORGE_TOKEN_FILE`, `TRANSITFORGE_INSECURE`. Flags override env.
 
 Binaries report link-time metadata:
 
 ```text
-proxyctl-controller --version
-proxyctl-agent --version
-proxctl version
+transitforge-controller --version
+transitforge-agent --version
+transitforge version
 ```
 
 Fallback without `-ldflags`: `dev` / `unknown`.
@@ -187,17 +187,17 @@ Fallback without `-ldflags`: `dev` / `unknown`.
 Requires Docker Engine on Linux (not Docker Desktop for Windows). Host network cannot publish ports or set `hostname:` (that would rename the host), so the overlay resets both.
 
 ```bash
-sudo install -d -m 0755 /usr/local/lib/proxyctl /var/lib/proxyctl
-sudo install -m 0755 scripts/haproxy-reload-on-change.sh /usr/local/lib/proxyctl/haproxy-reload-on-change.sh
-sudo install -m 0644 deploy/systemd/proxyctl-haproxy-reload.path /etc/systemd/system/proxyctl-haproxy-reload.path
-sudo install -m 0644 deploy/systemd/proxyctl-haproxy-reload.service /etc/systemd/system/proxyctl-haproxy-reload.service
+sudo install -d -m 0755 /usr/local/lib/transitforge /var/lib/transitforge
+sudo install -m 0755 scripts/haproxy-reload-on-change.sh /usr/local/lib/transitforge/haproxy-reload-on-change.sh
+sudo install -m 0644 deploy/systemd/transitforge-haproxy-reload.path /etc/systemd/system/transitforge-haproxy-reload.path
+sudo install -m 0644 deploy/systemd/transitforge-haproxy-reload.service /etc/systemd/system/transitforge-haproxy-reload.service
 sudo systemctl daemon-reload
-sudo systemctl enable --now proxyctl-haproxy-reload.path
+sudo systemctl enable --now transitforge-haproxy-reload.path
 
 sudo bash scripts/run-smoke-tests.sh
 sudo bash scripts/enable-live-overlay.sh
 # or, after images exist in GHCR:
-# sudo env PROXYCTL_VERSION=sha-abcdef1 bash scripts/enable-live-overlay.sh
+# sudo env TRANSITFORGE_VERSION=sha-abcdef1 bash scripts/enable-live-overlay.sh
 ```
 
 `enable-live-overlay.sh` still requires the smoke stamp, an agent-role token (never bootstrap), and `dry_run_only: true`. It never flips `dry_run_only` to false.
@@ -211,6 +211,6 @@ Default `deploy/prometheus/prometheus.docker.yml` scrapes `agent:9101` on the Co
 ## Dockerfile targets
 
 - `test` — `gofmt -l` (fail if dirty), `go vet ./...`, `go test ./...`
-- `controller` — `proxyctl-controller`; HEALTHCHECK via `healthcheck` subcommand
-- `agent` — `proxyctl-agent` + runtime tools listed above
-- `proxctl` — CLI + `docker-bootstrap.sh`
+- `controller` — `transitforge-controller`; HEALTHCHECK via `healthcheck` subcommand
+- `agent` — `transitforge-agent` + runtime tools listed above
+- `transitforge` — CLI + `docker-bootstrap.sh`

@@ -1,10 +1,10 @@
-# proxyctl — Proposed Architecture Roadmap
+# transitforge — Proposed Architecture Roadmap
 
 > Рабочий архитектурный план для обсуждения. Это **не замена** канонического `docs/ARCHITECTURE.md` до явного утверждения и переноса решений в него.
 
 ## 1. Цель продукта
 
-`proxyctl` должен стать понятной операторской панелью для управления цепочкой:
+`transitforge` должен стать понятной операторской панелью для управления цепочкой:
 
 ```text
 Пользователь
@@ -55,7 +55,7 @@ Foreign Node
    Предпочтительный onboarding — одноразовый bootstrap-token и команда, которую оператор выполняет на новом сервере.
 
 4. **3x-ui и SharX подключаются через provider adapters.**
-   Бизнес-логика proxyctl не должна зависеть от конкретных endpoint'ов конкретной панели.
+   Бизнес-логика transitforge не должна зависеть от конкретных endpoint'ов конкретной панели.
 
 5. **Никаких произвольных shell-команд из UI.**
    Установка поддерживаемых компонентов — только через versioned installer plans и allowlisted operations.
@@ -76,7 +76,7 @@ Foreign Node
 
 RU-side сервер — публичная точка входа пользователей.
 
-Существующий `Node` в текущем proxyctl.
+Существующий `Node` в текущем transitforge.
 
 Показывает:
 
@@ -116,7 +116,7 @@ SHARX
 UNMANAGED
 ```
 
-`UNMANAGED` означает, что proxyctl знает только `overlay_ip:port`, но не управляет Xray-панелью.
+`UNMANAGED` означает, что transitforge знает только `overlay_ip:port`, но не управляет Xray-панелью.
 
 ### Published Route
 
@@ -138,7 +138,7 @@ VLESS Reality
 10.200.90.2:443
 ```
 
-Внутри Published Route proxyctl всё ещё использует существующие:
+Внутри Published Route transitforge всё ещё использует существующие:
 
 - Tunnel
 - PortMapping
@@ -159,7 +159,7 @@ VLESS Reality
                                       |
                                       v
 +------------------+       +----------+-----------+
-| Human Auth       |       | proxyctl Controller  |
+| Human Auth       |       | transitforge Controller  |
 | Users / RBAC/TOTP|------>| SQLite / API / Audit |
 +------------------+       +----------+-----------+
                                       |
@@ -261,7 +261,7 @@ TLS verification
 
 Это отдельный advanced mode, потому что у SharX уже есть собственная multi-node архитектура.
 
-Не нужно на первом этапе дублировать её внутри proxyctl.
+Не нужно на первом этапе дублировать её внутри transitforge.
 
 ### 5.3 Capability discovery
 
@@ -292,7 +292,7 @@ UI показывает только реально поддерживаемые
 Нужен отдельный лёгкий компонент:
 
 ```text
-proxyctl-backend-agent
+transitforge-backend-agent
 ```
 
 Он НЕ является копией текущего privileged edge-agent.
@@ -414,7 +414,7 @@ Inbounds: 4
 
 ### Step 6 — Select inbound
 
-Proxyctl получает реальные inbounds через provider adapter.
+TransitForge получает реальные inbounds через provider adapter.
 
 Оператор выбирает:
 
@@ -733,7 +733,7 @@ Discovered from 3x-ui/SharX.
 
 Provider-specific settings and link to native panel.
 
-Proxyctl не должен пытаться заменить весь 3x-ui/SharX UI.
+TransitForge не должен пытаться заменить весь 3x-ui/SharX UI.
 
 ---
 
@@ -891,7 +891,7 @@ ProviderInstaller {
 }
 ```
 
-Сначала proxyctl поддерживает небольшой набор проверенных версий.
+Сначала transitforge поддерживает небольшой набор проверенных версий.
 
 UI:
 
@@ -933,14 +933,14 @@ SharX уже умеет:
 
 SharX standalone на Foreign Node.
 
-Proxyctl работает с SharX Panel API через adapter.
+TransitForge работает с SharX Panel API через adapter.
 
 ### Later
 
 SharX Multi-node integration.
 
 ```text
-proxyctl
+transitforge
    |
    `--> SharX central panel
            |
@@ -949,7 +949,7 @@ proxyctl
            `--> SharX worker NL
 ```
 
-В этом режиме proxyctl не должен повторно "устанавливать SharX panel" на каждый worker.
+В этом режиме transitforge не должен повторно "устанавливать SharX panel" на каждый worker.
 
 ---
 
@@ -1046,7 +1046,7 @@ traffic/status
 
 Без автоматической установки.
 
-**Результат:** proxyctl уже видит реальные зарубежные панели и их inbounds.
+**Результат:** transitforge уже видит реальные зарубежные панели и их inbounds.
 
 ---
 
@@ -1288,8 +1288,8 @@ curl -fsSL https://<controller>/bootstrap.sh | sudo sh -s -- <ENROLLMENT_ID>
 
 5. **Compose bundle deploy**:
    ```text
-   /opt/proxyctl/<foreign_node_id>/docker-compose.yml
-   /opt/proxyctl/<foreign_node_id>/.env      (0600, root-only)
+   /opt/transitforge/<foreign_node_id>/docker-compose.yml
+   /opt/transitforge/<foreign_node_id>/.env      (0600, root-only)
    ```
    `docker compose pull` строго по digest (`@sha256:...`), затем `docker compose up -d`.
 
@@ -1306,10 +1306,10 @@ curl -fsSL https://<controller>/bootstrap.sh | sudo sh -s -- <ENROLLMENT_ID>
 ### 22.3 Состав compose-стека на Foreign Node
 
 ```yaml
-# /opt/proxyctl/<foreign_node_id>/docker-compose.yml (пример для 3x-ui)
+# /opt/transitforge/<foreign_node_id>/docker-compose.yml (пример для 3x-ui)
 services:
   panel:
-    image: ghcr.io/proxyctl/3xui:v2.4.1@sha256:<pinned-digest>
+    image: ghcr.io/rsnest/3xui:v2.4.1@sha256:<pinned-digest>
     restart: unless-stopped
     network_mode: host          # чтобы порты inbound'ов совпадали с реальными
     volumes:
@@ -1317,13 +1317,13 @@ services:
     env_file: .env
 
   backend-agent:
-    image: ghcr.io/proxyctl/backend-agent:v0.9.0@sha256:<pinned-digest>
+    image: ghcr.io/rsnest/backend-agent:v0.9.0@sha256:<pinned-digest>
     restart: unless-stopped
     network_mode: host          # нужен для диагностики реальных сокетов хоста
     environment:
-      - PROXYCTL_CONTROLLER_URL=${CONTROLLER_URL}
-      - PROXYCTL_AGENT_TOKEN=${AGENT_TOKEN}
-      - PROXYCTL_DIAG_MODE=basic   # basic | packet (включается оператором отдельно)
+      - TRANSITFORGE_CONTROLLER_URL=${CONTROLLER_URL}
+      - TRANSITFORGE_AGENT_TOKEN=${AGENT_TOKEN}
+      - TRANSITFORGE_DIAG_MODE=basic   # basic | packet (включается оператором отдельно)
     # docker.sock НЕ пробрасывается сюда постоянно —
     # обновление/переустановка стека выполняется повторным запуском bootstrap,
     # а не через доступ агента к сокету.
@@ -1340,7 +1340,7 @@ volumes:
 ProviderInstaller {
     provider: 3X_UI | SHARX
     supported_versions: [...]
-    image_ref: "ghcr.io/proxyctl/<provider>:<version>@sha256:<digest>"
+    image_ref: "ghcr.io/rsnest/<provider>:<version>@sha256:<digest>"
     compose_template: <embedded yaml template>
     required_ports: [...]
     env_schema: [...]
@@ -1550,7 +1550,7 @@ Capabilities {
 }
 ```
 
-proxyctl не должен дублировать native node-management 3x-ui. Если Foreign Node фактически является child node существующей 3x-ui installation, это должно отражаться как provider topology, а не как второй независимый control plane.
+transitforge не должен дублировать native node-management 3x-ui. Если Foreign Node фактически является child node существующей 3x-ui installation, это должно отражаться как provider topology, а не как второй независимый control plane.
 
 Upstream 3x-ui также поддерживает scoped / optionally expiring API tokens. Для повседневной интеграции Provider Adapter должен использовать отдельный API token с минимальным scope, а не admin password.
 
@@ -1568,7 +1568,7 @@ XUI_NONINTERACTIVE=1
 /etc/x-ui/install-result.env
 ```
 
-Следовательно, proxyctl не должен заранее придумывать постоянный admin password как часть собственного data model.
+Следовательно, transitforge не должен заранее придумывать постоянный admin password как часть собственного data model.
 
 Предпочтительный flow:
 
@@ -1591,7 +1591,7 @@ XUI_NONINTERACTIVE=1
 NODE_TOKEN_ENCRYPTION = off | migration | required
 ```
 
-Upstream default может отличаться, но **proxyctl-managed installation policy** должна задавать:
+Upstream default может отличаться, но **transitforge-managed installation policy** должна задавать:
 
 ```text
 NODE_TOKEN_ENCRYPTION=required
@@ -1634,13 +1634,13 @@ PostgreSQL не поднимается автоматически на кажд�
 
 #### Tunnel health
 
-Если upstream 3x-ui имеет собственную automatic tunnel-health restart logic, proxyctl-managed deployment не должен включать конфликтующие auto-remediation механизмы без явного решения.
+Если upstream 3x-ui имеет собственную automatic tunnel-health restart logic, transitforge-managed deployment не должен включать конфликтующие auto-remediation механизмы без явного решения.
 
 Рекомендация:
 
 ```text
 provider internal auto-restart: OFF by default
-proxyctl Path Checks: source of diagnosis
+transitforge Path Checks: source of diagnosis
 operator-reviewed remediation: explicit
 ```
 
@@ -1660,9 +1660,9 @@ SharX поддерживает browser session authentication **и** отдел�
 
 ```text
 SharX panel
-   -> create dedicated API token for proxyctl integration
+   -> create dedicated API token for transitforge integration
    -> token returned once
-   -> proxyctl stores encrypted secret reference
+   -> transitforge stores encrypted secret reference
    -> Provider Adapter uses Bearer token
    -> token can be revoked independently
 ```
@@ -1690,9 +1690,9 @@ DB password хранится в `.env`/secret material с restrictive permission
 
 #### Watchtower
 
-SharX upstream поддерживает Watchtower / automatic update mechanisms, но proxyctl-managed deployment **не включает Watchtower**.
+SharX upstream поддерживает Watchtower / automatic update mechanisms, но transitforge-managed deployment **не включает Watchtower**.
 
-Правило proxyctl:
+Правило transitforge:
 
 ```text
 new upstream image available
@@ -1727,7 +1727,7 @@ B. Only if A is technically impossible, use a pinned upstream tag/commit install
    after a separate review and checksum/version policy.
 ```
 
-Если fallback installer используется, итоговый compose всё равно должен пройти policy normalization proxyctl (например, исключение Watchtower).
+Если fallback installer используется, итоговый compose всё равно должен пройти policy normalization transitforge (например, исключение Watchtower).
 
 #### ACME / port 80
 
@@ -1792,7 +1792,7 @@ Provider adapter отвечает за mapping:
 ForeignNode <-> provider-specific node identity
 ```
 
-proxyctl не должен автоматически становиться вторым master-controller для provider-internal topology.
+transitforge не должен автоматически становиться вторым master-controller для provider-internal topology.
 
 ---
 
@@ -1848,7 +1848,7 @@ response
 
 ### A.5 Provider capability matrix
 
-| Capability | 3x-ui | SharX | proxyctl behavior |
+| Capability | 3x-ui | SharX | transitforge behavior |
 |---|---|---|---|
 | Inbound discovery | yes | yes | normalize via adapter |
 | Traffic stats | yes | yes | normalize when available |
@@ -1910,12 +1910,12 @@ Rollback          Available
 ### A.7 Definition of Done additions
 
 - [ ] 3x-ui adapter uses a dedicated scoped/expiring API token for normal calls; generated bootstrap admin credentials are not the daily integration credential.
-- [ ] `NODE_TOKEN_ENCRYPTION=required` is an explicit proxyctl managed-deployment policy.
+- [ ] `NODE_TOKEN_ENCRYPTION=required` is an explicit transitforge managed-deployment policy.
 - [ ] 3x-ui extra network capabilities are conditional on the enabled functionality that requires them.
 - [ ] SharX adapter uses a dedicated API token rather than browser session emulation when the supported token API is available.
 - [ ] SharX managed compose has no Watchtower service.
 - [ ] SharX standalone deployment persists PostgreSQL data and includes DB backup requirements.
-- [ ] Provider native multi-node is discovered and represented rather than duplicated by proxyctl.
+- [ ] Provider native multi-node is discovered and represented rather than duplicated by transitforge.
 - [ ] Foreign port 80 exposure for ACME is explicit, never silent default.
 - [ ] Provider image versions/digests are pinned.
 - [ ] MTProto/Telemt sidecars use lifecycle-aware diagnostics rather than Xray-only checks.

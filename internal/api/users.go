@@ -3,9 +3,9 @@ package api
 import (
 	"net/http"
 
-	"proxyctl/internal/auth"
-	"proxyctl/internal/model"
-	"proxyctl/internal/store"
+	"transitforge/internal/auth"
+	"transitforge/internal/model"
+	"transitforge/internal/store"
 )
 
 func (s *Server) listUsers(w http.ResponseWriter, r *http.Request) {

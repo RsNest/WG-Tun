@@ -14,9 +14,9 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"proxyctl/internal/auth"
-	"proxyctl/internal/model"
-	"proxyctl/internal/store"
+	"transitforge/internal/auth"
+	"transitforge/internal/model"
+	"transitforge/internal/store"
 )
 
 type fakeAPI struct {
@@ -181,7 +181,7 @@ func sampleFake() *fakeAPI {
 		tunnels: []model.Tunnel{{
 			ID: "t1", NodeID: "n1", BackendID: "b1", Type: model.TunnelWireGuard,
 			InterfaceName: "wg-a", LocalOverlayIP: "10.200.1.1", RemoteOverlayIP: "10.200.1.2",
-			PrivateKeyPath: "/etc/proxyctl/keys/wg-a.key", Endpoint: "198.51.100.20:51820",
+			PrivateKeyPath: "/etc/transitforge/keys/wg-a.key", Endpoint: "198.51.100.20:51820",
 		}},
 		mappings: []model.PortMapping{{
 			ID: "m1", NodeID: "n1", BackendID: "b1", Protocol: model.ProtoTCP,
@@ -291,7 +291,7 @@ func TestRenderPages(t *testing.T) {
 		if strings.Contains(html, "BEGIN PRIVATE KEY") || strings.Contains(html, "private_key\":") {
 			t.Fatalf("%s leaked key material", path)
 		}
-		if !strings.Contains(html, "proxyctl") {
+		if !strings.Contains(html, "TransitForge") {
 			t.Fatalf("%s missing product name", path)
 		}
 	}

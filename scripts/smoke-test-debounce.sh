@@ -12,8 +12,8 @@ require_linux
 if [ ! -f "$SMOKE_CFG" ]; then
   die "missing ${SMOKE_CFG}"
 fi
-if ! systemctl is-enabled proxyctl-haproxy-reload.path >/dev/null 2>&1; then
-  die "enable proxyctl-haproxy-reload.path first (scripts/vm-bootstrap.sh)"
+if ! systemctl is-enabled transitforge-haproxy-reload.path >/dev/null 2>&1; then
+  die "enable transitforge-haproxy-reload.path first (scripts/vm-bootstrap.sh)"
 fi
 
 mkdir -p -- "$SMOKE_DIR"
@@ -31,7 +31,7 @@ i=1
 while [ "$i" -le 20 ]; do
   variant="${SMOKE_DIR}/variant-${i}.cfg"
   {
-    printf '# proxyctl-smoke-debounce variant=%s ts=%s\n' "$i" "$(date -u +%Y%m%dT%H%M%S)"
+    printf '# transitforge-smoke-debounce variant=%s ts=%s\n' "$i" "$(date -u +%Y%m%dT%H%M%S)"
     cat -- "${SMOKE_DIR}/haproxy.cfg.orig"
   } >"$variant"
   log "burst write ${i}/20"

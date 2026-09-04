@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"proxyctl/internal/model"
+	"transitforge/internal/model"
 )
 
 const stateVersion = 1

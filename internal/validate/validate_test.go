@@ -3,7 +3,7 @@ package validate_test
 import (
 	"testing"
 
-	"proxyctl/internal/validate"
+	"transitforge/internal/validate"
 )
 
 func TestIPv4(t *testing.T) {

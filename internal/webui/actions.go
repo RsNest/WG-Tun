@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"proxyctl/internal/model"
-	"proxyctl/internal/webui/i18n"
+	"transitforge/internal/model"
+	"transitforge/internal/webui/i18n"
 )
 
 func (s *Server) nodePlan(w http.ResponseWriter, r *http.Request) {

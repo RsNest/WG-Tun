@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"proxyctl/internal/haproxy"
-	"proxyctl/internal/model"
-	"proxyctl/internal/reconcile"
-	"proxyctl/internal/testhost"
+	"transitforge/internal/haproxy"
+	"transitforge/internal/model"
+	"transitforge/internal/reconcile"
+	"transitforge/internal/testhost"
 )
 
 func TestRenderPreservesUnmanagedAndRestoresOnValidateFail(t *testing.T) {

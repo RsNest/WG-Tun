@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"proxyctl/internal/cmdexec"
+	"transitforge/internal/cmdexec"
 )
 
 func TestRejectsShell(t *testing.T) {

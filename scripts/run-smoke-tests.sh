@@ -69,7 +69,7 @@ if [ "$debounce_rc" -ne 0 ] || [ "$restore_rc" -ne 0 ]; then
   die "one or more smoke tests failed"
 fi
 
-mkdir -p -- /var/lib/proxyctl
+mkdir -p -- /var/lib/transitforge
 printf 'passed_at=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$SMOKE_STAMP"
 log "wrote ${SMOKE_STAMP}"
 log "next: scripts/enable-live-overlay.sh (dry_run_only remains true)"

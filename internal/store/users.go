@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"time"
 
-	"proxyctl/internal/ident"
-	"proxyctl/internal/model"
+	"transitforge/internal/ident"
+	"transitforge/internal/model"
 )
 
 func (s *SQLite) CreateUser(ctx context.Context, u *model.User) error {

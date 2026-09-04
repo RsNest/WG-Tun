@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"proxyctl/internal/auth"
-	"proxyctl/internal/ident"
-	"proxyctl/internal/logging"
-	"proxyctl/internal/model"
-	"proxyctl/internal/reconcile"
-	"proxyctl/internal/store"
+	"transitforge/internal/auth"
+	"transitforge/internal/ident"
+	"transitforge/internal/logging"
+	"transitforge/internal/model"
+	"transitforge/internal/reconcile"
+	"transitforge/internal/store"
 )
 
 func (s *Server) audit(r *http.Request, action, resource, id, detail string, success bool) {
@@ -410,7 +410,7 @@ func (s *Server) putActualState(w http.ResponseWriter, r *http.Request) {
 		Healthy:       len(st.Conflicts) == 0,
 		LastHeartbeat: time.Now().UTC(),
 		LastReconcile: st.DiscoveredAt,
-		Version:       r.Header.Get("X-Proxyctl-Agent-Version"),
+		Version:       r.Header.Get("X-TransitForge-Agent-Version"),
 	}
 	if err := s.store.PutActualState(r.Context(), id, st, status); err != nil {
 		writeErr(w, err)

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"proxyctl/internal/cmdexec"
-	"proxyctl/internal/model"
-	"proxyctl/internal/validate"
+	"transitforge/internal/cmdexec"
+	"transitforge/internal/model"
+	"transitforge/internal/validate"
 )
 
 // Manager inspects and starts an existing systemd OpenSSH TUN unit.

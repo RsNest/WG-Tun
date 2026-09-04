@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{if .Title}}{{.Title}} · {{end}}proxyctl</title>
+  <title>{{if .Title}}{{.Title}} · {{end}}TransitForge</title>
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/htmx.min.js" defer></script>
   <script src="/static/app.js" defer></script>
@@ -26,7 +26,7 @@
   {{if .Principal}}
   <aside class="sidebar" aria-label="{{.Tr "nav.group.overview"}}">
     <div class="brand-row">
-      <div class="brand"><a href="/"><span class="brand-name">proxyctl</span></a></div>
+      <div class="brand"><a href="/"><span class="brand-name">TransitForge</span></a></div>
       <button type="button" class="nav-toggle" id="nav-toggle"
         aria-expanded="{{if .NavCollapsed}}false{{else}}true{{end}}"
         data-label-collapse="{{.Tr "nav.collapse"}}"
@@ -158,7 +158,7 @@
 <html lang="{{.Locale}}">
 <head>
   <meta charset="utf-8">
-  <title>{{.Tr "login.title"}} · proxyctl</title>
+  <title>{{.Tr "login.title"}} · TransitForge</title>
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
@@ -205,7 +205,7 @@
 <html lang="{{.Locale}}">
 <head>
   <meta charset="utf-8">
-  <title>{{.Tr "setup.title"}} · proxyctl</title>
+  <title>{{.Tr "setup.title"}} · TransitForge</title>
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
@@ -249,7 +249,7 @@
 <html lang="{{.Locale}}">
 <head>
   <meta charset="utf-8">
-  <title>{{.Tr "mfa.title"}} · proxyctl</title>
+  <title>{{.Tr "mfa.title"}} · TransitForge</title>
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>

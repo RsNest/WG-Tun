@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"proxyctl/internal/model"
-	"proxyctl/internal/reconcile"
+	"transitforge/internal/model"
+	"transitforge/internal/reconcile"
 )
 
 func fixtureDesired() model.DesiredState {
@@ -49,7 +49,7 @@ func TestDiffIdempotentWhenActualMatches(t *testing.T) {
 			InterfacePresent: true, LocalOverlayIP: tun.LocalOverlayIP, ListenPort: tun.ListenPort,
 		}},
 		FirewallRules: []model.FirewallRule{{
-			Chain: "PROXYCTL_DNAT", Comment: reconcile.MappingComment(m.ID), Managed: true,
+			Chain: "TRANSITFORGE_DNAT", Comment: reconcile.MappingComment(m.ID), Managed: true,
 			Spec: "UDP dport 51821 -> 10.200.1.2:51820 comment " + reconcile.MappingComment(m.ID),
 		}},
 	}

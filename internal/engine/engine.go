@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"proxyctl/internal/firewall"
-	"proxyctl/internal/logging"
-	"proxyctl/internal/model"
-	"proxyctl/internal/reconcile"
-	"proxyctl/internal/wireguard"
+	"transitforge/internal/firewall"
+	"transitforge/internal/logging"
+	"transitforge/internal/model"
+	"transitforge/internal/reconcile"
+	"transitforge/internal/wireguard"
 )
 
 type Engine struct {

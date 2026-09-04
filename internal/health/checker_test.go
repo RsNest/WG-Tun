@@ -3,7 +3,7 @@ package health_test
 import (
 	"testing"
 
-	"proxyctl/internal/health"
+	"transitforge/internal/health"
 )
 
 func TestPrimaryFailedRules(t *testing.T) {

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Assert Docker-built proxyctl images: version output, controller health, dry-run agent, no checkout secrets.
+# Assert Docker-built transitforge images: version output, controller health, dry-run agent, no checkout secrets.
 # Does not mutate iptables/WireGuard. Requires Docker; does not require host Go.
 set -euo pipefail
 
 CONTROLLER_IMAGE="${CONTROLLER_IMAGE:?CONTROLLER_IMAGE is required}"
 AGENT_IMAGE="${AGENT_IMAGE:?AGENT_IMAGE is required}"
-PROXCTL_IMAGE="${PROXCTL_IMAGE:?PROXCTL_IMAGE is required}"
+CLI_IMAGE="${CLI_IMAGE:?CLI_IMAGE is required}"
 
 assert_no_secrets() {
   local image="$1"
@@ -15,8 +15,8 @@ assert_no_secrets() {
     test ! -d /.git
     test ! -d /go
     test ! -f /data/bootstrap.token
-    test ! -f /etc/proxyctl/bootstrap.token
-    test ! -f /etc/proxyctl/agent.token
+    test ! -f /etc/transitforge/bootstrap.token
+    test ! -f /etc/transitforge/agent.token
     for p in /data/*.db /data/*.sqlite /data/*.key /data/*.pem; do
       if [ -e "$p" ]; then echo "unexpected $p" >&2; exit 1; fi
     done
@@ -48,21 +48,21 @@ wait_exec() {
   return 1
 }
 
-echo "proxctl --version"
-docker run --rm --entrypoint proxctl "$PROXCTL_IMAGE" version
+echo "transitforge --version"
+docker run --rm --entrypoint transitforge "$CLI_IMAGE" version
 echo "controller --version"
-docker run --rm --entrypoint /usr/local/bin/proxyctl-controller "$CONTROLLER_IMAGE" --version
+docker run --rm --entrypoint /usr/local/bin/transitforge-controller "$CONTROLLER_IMAGE" --version
 echo "agent --version"
-docker run --rm --entrypoint /usr/local/bin/proxyctl-agent "$AGENT_IMAGE" --version
+docker run --rm --entrypoint /usr/local/bin/transitforge-agent "$AGENT_IMAGE" --version
 
 echo "secret/source tree scan"
 assert_no_secrets "$CONTROLLER_IMAGE"
 assert_no_secrets "$AGENT_IMAGE"
-assert_no_secrets "$PROXCTL_IMAGE"
+assert_no_secrets "$CLI_IMAGE"
 
-net="proxyctl-ci-net-$$"
-name="proxyctl-ci-ctrl-$$"
-aname="proxyctl-ci-agent-$$"
+net="transitforge-ci-net-$$"
+name="transitforge-ci-ctrl-$$"
+aname="transitforge-ci-agent-$$"
 tmpdir="$(mktemp -d)"
 atok="$tmpdir/bootstrap.token"
 ayaml="$tmpdir/agent.yaml"
@@ -91,9 +91,9 @@ docker network create "$net" >/dev/null
 docker run -d --name "$name" --no-healthcheck \
   --network "$net" --network-alias controller \
   "$CONTROLLER_IMAGE" \
-  --config /etc/proxyctl/controller.yaml --plain-http --listen 0.0.0.0:8080 >/dev/null
-wait_exec "$name" /usr/local/bin/proxyctl-controller healthcheck --url http://127.0.0.1:8080/healthz
-wait_exec "$name" /usr/local/bin/proxyctl-controller healthcheck --url http://127.0.0.1:8080/readyz
+  --config /etc/transitforge/controller.yaml --plain-http --listen 0.0.0.0:8080 >/dev/null
+wait_exec "$name" /usr/local/bin/transitforge-controller healthcheck --url http://127.0.0.1:8080/healthz
+wait_exec "$name" /usr/local/bin/transitforge-controller healthcheck --url http://127.0.0.1:8080/readyz
 uid="$(docker exec "$name" awk '/^Uid:/{print $2}' /proc/1/status)"
 if [ "$uid" != "65532" ]; then
   echo "controller pid 1 uid=$uid, want 65532 (non-root)" >&2
@@ -101,21 +101,21 @@ if [ "$uid" != "65532" ]; then
   exit 1
 fi
 
-echo "proxctl whoami + register dry-run node"
+echo "transitforge whoami + register dry-run node"
 docker cp "$name:/data/bootstrap.token" "$atok"
 chmod 0600 "$atok"
 docker run --rm --network "$net" \
   -v "$atok:/token:ro" \
-  -e PROXYCTL_CONTROLLER=http://controller:8080 \
-  -e PROXYCTL_TOKEN_FILE=/token \
-  -e PROXYCTL_INSECURE=true \
-  "$PROXCTL_IMAGE" whoami
+  -e TRANSITFORGE_CONTROLLER=http://controller:8080 \
+  -e TRANSITFORGE_TOKEN_FILE=/token \
+  -e TRANSITFORGE_INSECURE=true \
+  "$CLI_IMAGE" whoami
 docker run --rm --network "$net" \
   -v "$atok:/token:ro" \
-  -e PROXYCTL_CONTROLLER=http://controller:8080 \
-  -e PROXYCTL_TOKEN_FILE=/token \
-  -e PROXYCTL_INSECURE=true \
-  "$PROXCTL_IMAGE" node add --name ru-edge-1 >/dev/null
+  -e TRANSITFORGE_CONTROLLER=http://controller:8080 \
+  -e TRANSITFORGE_TOKEN_FILE=/token \
+  -e TRANSITFORGE_INSECURE=true \
+  "$CLI_IMAGE" node add --name ru-edge-1 >/dev/null
 
 cat >"$ayaml" <<'EOF'
 node_name: ru-edge-1
@@ -123,7 +123,7 @@ controller_url: http://controller:8080
 token_file: /data/bootstrap.token
 reconcile_interval: 10s
 dry_run_only: true
-state_dir: /run/proxyctl
+state_dir: /run/transitforge
 haproxy_config: /etc/haproxy/haproxy.cfg
 haproxy_reload: external
 tls:
@@ -134,10 +134,10 @@ EOF
 echo "agent dry-run start (shared network, no NET_ADMIN, dummy inventory only)"
 docker run -d --name "$aname" --network "$net" --no-healthcheck \
   -v "$atok:/data/bootstrap.token:ro" \
-  -v "$ayaml:/etc/proxyctl/agent.yaml:ro" \
+  -v "$ayaml:/etc/transitforge/agent.yaml:ro" \
   "$AGENT_IMAGE" >/dev/null
-wait_exec "$aname" /usr/local/bin/proxyctl-agent healthcheck --url http://127.0.0.1:9101/healthz
-wait_exec "$aname" /usr/local/bin/proxyctl-agent healthcheck --url http://127.0.0.1:9101/readyz
+wait_exec "$aname" /usr/local/bin/transitforge-agent healthcheck --url http://127.0.0.1:9101/healthz
+wait_exec "$aname" /usr/local/bin/transitforge-agent healthcheck --url http://127.0.0.1:9101/readyz
 auid="$(docker exec "$aname" awk '/^Uid:/{print $2}' /proc/1/status)"
 if [ "$auid" != "0" ]; then
   echo "agent pid 1 uid=$auid, want 0 (root; live overlay needs caps)" >&2

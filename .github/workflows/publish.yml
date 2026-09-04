@@ -51,14 +51,14 @@ jobs:
           build-args: |
             VERSION=${{ steps.ver.outputs.version }}
             COMMIT=${{ steps.ver.outputs.commit }}
-          cache-from: type=gha,scope=proxyctl-test
-          cache-to: type=gha,scope=proxyctl-test,mode=max
+          cache-from: type=gha,scope=transitforge-test
+          cache-to: type=gha,scope=transitforge-test,mode=max
 
       - name: Controller metadata
         id: meta-controller
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/rsnest/wg-tun-controller
+          images: ghcr.io/rsnest/transitforge-controller
           flavor: |
             latest=false
           tags: |
@@ -72,7 +72,7 @@ jobs:
         id: meta-agent
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/rsnest/wg-tun-agent
+          images: ghcr.io/rsnest/transitforge-agent
           flavor: |
             latest=false
           tags: |
@@ -82,11 +82,11 @@ jobs:
             type=semver,pattern=v{{major}}.{{minor}}
             type=semver,pattern=v{{major}}
 
-      - name: proxctl metadata
-        id: meta-proxctl
+      - name: transitforge metadata
+        id: meta-transitforge
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/rsnest/wg-tun-proxctl
+          images: ghcr.io/rsnest/transitforge-cli
           flavor: |
             latest=false
           tags: |
@@ -102,14 +102,14 @@ jobs:
           context: .
           target: controller
           load: true
-          tags: ghcr.io/rsnest/wg-tun-controller:ci
+          tags: ghcr.io/rsnest/transitforge-controller:ci
           platforms: linux/amd64
           build-args: |
             VERSION=${{ steps.ver.outputs.version }}
             COMMIT=${{ steps.ver.outputs.commit }}
             CREATED=${{ steps.ver.outputs.created }}
-          cache-from: type=gha,scope=proxyctl-controller
-          cache-to: type=gha,scope=proxyctl-controller,mode=max
+          cache-from: type=gha,scope=transitforge-controller
+          cache-to: type=gha,scope=transitforge-controller,mode=max
 
       - name: Build agent (no push yet)
         uses: docker/build-push-action@v6
@@ -117,35 +117,35 @@ jobs:
           context: .
           target: agent
           load: true
-          tags: ghcr.io/rsnest/wg-tun-agent:ci
+          tags: ghcr.io/rsnest/transitforge-agent:ci
           platforms: linux/amd64
           build-args: |
             VERSION=${{ steps.ver.outputs.version }}
             COMMIT=${{ steps.ver.outputs.commit }}
             CREATED=${{ steps.ver.outputs.created }}
-          cache-from: type=gha,scope=proxyctl-agent
-          cache-to: type=gha,scope=proxyctl-agent,mode=max
+          cache-from: type=gha,scope=transitforge-agent
+          cache-to: type=gha,scope=transitforge-agent,mode=max
 
-      - name: Build proxctl (no push yet)
+      - name: Build transitforge (no push yet)
         uses: docker/build-push-action@v6
         with:
           context: .
-          target: proxctl
+          target: cli
           load: true
-          tags: ghcr.io/rsnest/wg-tun-proxctl:ci
+          tags: ghcr.io/rsnest/transitforge-cli:ci
           platforms: linux/amd64
           build-args: |
             VERSION=${{ steps.ver.outputs.version }}
             COMMIT=${{ steps.ver.outputs.commit }}
             CREATED=${{ steps.ver.outputs.created }}
-          cache-from: type=gha,scope=proxyctl-proxctl
-          cache-to: type=gha,scope=proxyctl-proxctl,mode=max
+          cache-from: type=gha,scope=transitforge-cli
+          cache-to: type=gha,scope=transitforge-cli,mode=max
 
       - name: Image smoke before publish
         env:
-          CONTROLLER_IMAGE: ghcr.io/rsnest/wg-tun-controller:ci
-          AGENT_IMAGE: ghcr.io/rsnest/wg-tun-agent:ci
-          PROXCTL_IMAGE: ghcr.io/rsnest/wg-tun-proxctl:ci
+          CONTROLLER_IMAGE: ghcr.io/rsnest/transitforge-controller:ci
+          AGENT_IMAGE: ghcr.io/rsnest/transitforge-agent:ci
+          CLI_IMAGE: ghcr.io/rsnest/transitforge-cli:ci
         run: bash scripts/docker-ci-smoke.sh
 
       - name: Push controller
@@ -163,7 +163,7 @@ jobs:
             VERSION=${{ steps.ver.outputs.version }}
             COMMIT=${{ steps.ver.outputs.commit }}
             CREATED=${{ steps.ver.outputs.created }}
-          cache-from: type=gha,scope=proxyctl-controller
+          cache-from: type=gha,scope=transitforge-controller
 
       - name: Push agent
         uses: docker/build-push-action@v6
@@ -180,21 +180,21 @@ jobs:
             VERSION=${{ steps.ver.outputs.version }}
             COMMIT=${{ steps.ver.outputs.commit }}
             CREATED=${{ steps.ver.outputs.created }}
-          cache-from: type=gha,scope=proxyctl-agent
+          cache-from: type=gha,scope=transitforge-agent
 
-      - name: Push proxctl
+      - name: Push transitforge
         uses: docker/build-push-action@v6
         with:
           context: .
-          target: proxctl
+          target: cli
           push: true
           provenance: mode=max
           sbom: true
-          tags: ${{ steps.meta-proxctl.outputs.tags }}
-          labels: ${{ steps.meta-proxctl.outputs.labels }}
+          tags: ${{ steps.meta-transitforge.outputs.tags }}
+          labels: ${{ steps.meta-transitforge.outputs.labels }}
           platforms: linux/amd64
           build-args: |
             VERSION=${{ steps.ver.outputs.version }}
             COMMIT=${{ steps.ver.outputs.commit }}
             CREATED=${{ steps.ver.outputs.created }}
-          cache-from: type=gha,scope=proxyctl-proxctl
+          cache-from: type=gha,scope=transitforge-cli

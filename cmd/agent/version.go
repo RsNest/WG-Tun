@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"proxyctl/internal/version"
+	"transitforge/internal/version"
 )
 
 func maybeVersion() bool {
 	for _, a := range os.Args[1:] {
 		if a == "--version" || a == "-version" || a == "version" {
-			fmt.Println(version.Line("proxyctl-agent"))
+			fmt.Println(version.Line("transitforge-agent"))
 			return true
 		}
 	}

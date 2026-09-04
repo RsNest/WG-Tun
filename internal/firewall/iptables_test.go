@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"proxyctl/internal/firewall"
-	"proxyctl/internal/model"
-	"proxyctl/internal/testhost"
+	"transitforge/internal/firewall"
+	"transitforge/internal/model"
+	"transitforge/internal/testhost"
 )
 
 func TestFirewallDiscoverPlanApply(t *testing.T) {
@@ -38,8 +38,8 @@ func TestFirewallDiscoverPlanApply(t *testing.T) {
 	if !plan2.Empty() {
 		t.Fatalf("expected empty second plan:\n%s", plan2)
 	}
-	if !strings.Contains(strings.Join(h.NAT["PROXYCTL_DNAT"], "\n"), "proxyctl:mapping:map1") {
-		t.Fatalf("dnat=%v", h.NAT["PROXYCTL_DNAT"])
+	if !strings.Contains(strings.Join(h.NAT["TRANSITFORGE_DNAT"], "\n"), "transitforge:mapping:map1") {
+		t.Fatalf("dnat=%v", h.NAT["TRANSITFORGE_DNAT"])
 	}
 }
 

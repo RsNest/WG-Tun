@@ -5,24 +5,24 @@ REGISTRY ?= ghcr.io/rsnest
 VERSION ?= dev
 COMMIT ?= unknown
 
-.PHONY: test controller agent proxctl images smoke
+.PHONY: test controller agent cli images smoke
 
 test:
 	docker build --target test --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) .
 
 controller:
-	docker build --target controller --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t $(REGISTRY)/wg-tun-controller:local .
+	docker build --target controller --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t transitforge-controller:local .
 
 agent:
-	docker build --target agent --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t $(REGISTRY)/wg-tun-agent:local .
+	docker build --target agent --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t transitforge-agent:local .
 
-proxctl:
-	docker build --target proxctl --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t $(REGISTRY)/wg-tun-proxctl:local .
+cli:
+	docker build --target cli --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t transitforge-cli:local .
 
-images: controller agent proxctl
+images: controller agent cli
 
 smoke: images
-	CONTROLLER_IMAGE=$(REGISTRY)/wg-tun-controller:local \
-	AGENT_IMAGE=$(REGISTRY)/wg-tun-agent:local \
-	PROXCTL_IMAGE=$(REGISTRY)/wg-tun-proxctl:local \
+	CONTROLLER_IMAGE=transitforge-controller:local \
+	AGENT_IMAGE=transitforge-agent:local \
+	CLI_IMAGE=transitforge-cli:local \
 	sh scripts/docker-ci-smoke.sh

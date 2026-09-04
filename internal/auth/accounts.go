@@ -10,15 +10,15 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"proxyctl/internal/ident"
-	"proxyctl/internal/model"
-	"proxyctl/internal/store"
-	"proxyctl/internal/validate"
+	"transitforge/internal/ident"
+	"transitforge/internal/model"
+	"transitforge/internal/store"
+	"transitforge/internal/validate"
 )
 
 const (
 	recoveryCodeCount = 10
-	totpIssuer        = "proxyctl"
+	totpIssuer        = "TransitForge"
 )
 
 type Accounts struct {

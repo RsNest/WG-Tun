@@ -1,8 +1,8 @@
 # Canonical build: Docker Engine + Buildx. Host Go is optional.
 #   docker build --target test .
-#   docker build --target controller -t ghcr.io/rsnest/wg-tun-controller:local .
-#   docker build --target agent -t ghcr.io/rsnest/wg-tun-agent:local .
-#   docker build --target proxctl -t ghcr.io/rsnest/wg-tun-proxctl:local .
+#   docker build --target controller -t ghcr.io/rsnest/transitforge-controller:local .
+#   docker build --target agent -t ghcr.io/rsnest/transitforge-agent:local .
+#   docker build --target cli -t ghcr.io/rsnest/transitforge-cli:local .
 #
 # Published platform for this phase: linux/amd64.
 
@@ -31,23 +31,23 @@ ARG COMMIT=unknown
 ENV CGO_ENABLED=0 GOTOOLCHAIN=local
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    sh -ec 'ldflags="-s -w -X proxyctl/internal/version.Version=${VERSION} -X proxyctl/internal/version.Commit=${COMMIT}"; \
+    sh -ec 'ldflags="-s -w -X transitforge/internal/version.Version=${VERSION} -X transitforge/internal/version.Commit=${COMMIT}"; \
       mkdir -p /out; \
-      go build -trimpath -ldflags "$ldflags" -o /out/proxyctl-controller ./cmd/controller; \
-      go build -trimpath -ldflags "$ldflags" -o /out/proxyctl-agent ./cmd/agent; \
-      go build -trimpath -ldflags "$ldflags" -o /out/proxctl ./cmd/proxctl'
+      go build -trimpath -ldflags "$ldflags" -o /out/transitforge-controller ./cmd/controller; \
+      go build -trimpath -ldflags "$ldflags" -o /out/transitforge-agent ./cmd/agent; \
+      go build -trimpath -ldflags "$ldflags" -o /out/transitforge ./cmd/transitforge'
 
 ARG RUNTIME_IMAGE=debian:bookworm-slim
 FROM ${RUNTIME_IMAGE} AS runtime-base
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates \
  && rm -rf /var/lib/apt/lists/* \
- && mkdir -p /data /etc/proxyctl /run/proxyctl
+ && mkdir -p /data /etc/transitforge /run/transitforge
 
 ARG VERSION=dev
 ARG COMMIT=unknown
 ARG CREATED=""
-ARG SOURCE=https://github.com/RsNest/WG-Tun
+ARG SOURCE=https://github.com/RsNest/TransitForge
 LABEL org.opencontainers.image.source="${SOURCE}" \
       org.opencontainers.image.revision="${COMMIT}" \
       org.opencontainers.image.version="${VERSION}" \
@@ -58,9 +58,9 @@ FROM runtime-base AS controller
 ARG VERSION=dev
 ARG COMMIT=unknown
 ARG CREATED=""
-ARG SOURCE=https://github.com/RsNest/WG-Tun
-LABEL org.opencontainers.image.title="proxyctl controller" \
-      org.opencontainers.image.description="proxyctl desired-state controller (TLS API + SQLite)" \
+ARG SOURCE=https://github.com/RsNest/TransitForge
+LABEL org.opencontainers.image.title="transitforge controller" \
+      org.opencontainers.image.description="transitforge desired-state controller (TLS API + SQLite)" \
       org.opencontainers.image.source="${SOURCE}" \
       org.opencontainers.image.revision="${COMMIT}" \
       org.opencontainers.image.version="${VERSION}" \
@@ -68,28 +68,28 @@ LABEL org.opencontainers.image.title="proxyctl controller" \
 RUN apt-get update \
  && apt-get install -y --no-install-recommends passwd util-linux \
  && rm -rf /var/lib/apt/lists/* \
- && useradd --system --uid 65532 --home /data --shell /usr/sbin/nologin proxyctl \
- && mkdir -p /data /data/certs /etc/proxyctl \
- && chown proxyctl:proxyctl /data /data/certs
-COPY --from=build /out/proxyctl-controller /usr/local/bin/proxyctl-controller
-COPY configs/docker-controller.yaml /etc/proxyctl/controller.yaml
+ && useradd --system --uid 65532 --home /data --shell /usr/sbin/nologin transitforge \
+ && mkdir -p /data /data/certs /etc/transitforge \
+ && chown transitforge:transitforge /data /data/certs
+COPY --from=build /out/transitforge-controller /usr/local/bin/transitforge-controller
+COPY configs/docker-controller.yaml /etc/transitforge/controller.yaml
 COPY scripts/controller-entrypoint.sh /usr/local/bin/controller-entrypoint.sh
-RUN chmod 0755 /usr/local/bin/controller-entrypoint.sh /usr/local/bin/proxyctl-controller \
- && chmod 0644 /etc/proxyctl/controller.yaml
+RUN chmod 0755 /usr/local/bin/controller-entrypoint.sh /usr/local/bin/transitforge-controller \
+ && chmod 0644 /etc/transitforge/controller.yaml
 EXPOSE 8443
 VOLUME ["/data"]
 HEALTHCHECK --interval=3s --timeout=2s --start-period=10s --retries=10 \
-  CMD ["/usr/local/bin/proxyctl-controller", "healthcheck", "--url", "https://127.0.0.1:8443/readyz", "-k"]
+  CMD ["/usr/local/bin/transitforge-controller", "healthcheck", "--url", "https://127.0.0.1:8443/readyz", "-k"]
 ENTRYPOINT ["/usr/local/bin/controller-entrypoint.sh"]
-CMD ["--config", "/etc/proxyctl/controller.yaml"]
+CMD ["--config", "/etc/transitforge/controller.yaml"]
 
-FROM runtime-base AS proxctl
+FROM runtime-base AS cli
 ARG VERSION=dev
 ARG COMMIT=unknown
 ARG CREATED=""
-ARG SOURCE=https://github.com/RsNest/WG-Tun
-LABEL org.opencontainers.image.title="proxctl" \
-      org.opencontainers.image.description="proxyctl operator CLI and compose bootstrap helper" \
+ARG SOURCE=https://github.com/RsNest/TransitForge
+LABEL org.opencontainers.image.title="transitforge" \
+      org.opencontainers.image.description="transitforge operator CLI and compose bootstrap helper" \
       org.opencontainers.image.source="${SOURCE}" \
       org.opencontainers.image.revision="${COMMIT}" \
       org.opencontainers.image.version="${VERSION}" \
@@ -98,19 +98,19 @@ LABEL org.opencontainers.image.title="proxctl" \
 RUN apt-get update \
  && apt-get install -y --no-install-recommends wget \
  && rm -rf /var/lib/apt/lists/*
-COPY --from=build /out/proxctl /usr/local/bin/proxctl
+COPY --from=build /out/transitforge /usr/local/bin/transitforge
 COPY scripts/docker-bootstrap.sh /usr/local/bin/docker-bootstrap.sh
-RUN chmod 0755 /usr/local/bin/proxctl /usr/local/bin/docker-bootstrap.sh
-ENV PROXYCTL_CONTROLLER=https://controller:8443
-ENTRYPOINT ["proxctl"]
+RUN chmod 0755 /usr/local/bin/transitforge /usr/local/bin/docker-bootstrap.sh
+ENV TRANSITFORGE_CONTROLLER=https://controller:8443
+ENTRYPOINT ["transitforge"]
 
 FROM runtime-base AS agent
 ARG VERSION=dev
 ARG COMMIT=unknown
 ARG CREATED=""
-ARG SOURCE=https://github.com/RsNest/WG-Tun
-LABEL org.opencontainers.image.title="proxyctl agent" \
-      org.opencontainers.image.description="proxyctl edge agent (dry-run by default; live overlay needs host net + caps)" \
+ARG SOURCE=https://github.com/RsNest/TransitForge
+LABEL org.opencontainers.image.title="transitforge agent" \
+      org.opencontainers.image.description="transitforge edge agent (dry-run by default; live overlay needs host net + caps)" \
       org.opencontainers.image.source="${SOURCE}" \
       org.opencontainers.image.revision="${COMMIT}" \
       org.opencontainers.image.version="${VERSION}" \
@@ -125,10 +125,10 @@ RUN apt-get update \
  && mkdir -p /etc/haproxy \
  && printf 'global\n    daemon\ndefaults\n    mode tcp\n    timeout connect 5s\n    timeout client 30s\n    timeout server 30s\n' \
       >/etc/haproxy/haproxy.cfg
-COPY --from=build /out/proxyctl-agent /usr/local/bin/proxyctl-agent
-COPY configs/docker-agent.yaml /etc/proxyctl/agent.yaml
-RUN chmod 0755 /usr/local/bin/proxyctl-agent
+COPY --from=build /out/transitforge-agent /usr/local/bin/transitforge-agent
+COPY configs/docker-agent.yaml /etc/transitforge/agent.yaml
+RUN chmod 0755 /usr/local/bin/transitforge-agent
 EXPOSE 9101
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=10 \
-  CMD ["/usr/local/bin/proxyctl-agent", "healthcheck", "--url", "http://127.0.0.1:9101/healthz"]
-ENTRYPOINT ["proxyctl-agent", "--config", "/etc/proxyctl/agent.yaml", "--insecure"]
+  CMD ["/usr/local/bin/transitforge-agent", "healthcheck", "--url", "http://127.0.0.1:9101/healthz"]
+ENTRYPOINT ["transitforge-agent", "--config", "/etc/transitforge/agent.yaml", "--insecure"]

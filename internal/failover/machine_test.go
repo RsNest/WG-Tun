@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"proxyctl/internal/failover"
-	"proxyctl/internal/health"
-	"proxyctl/internal/model"
+	"transitforge/internal/failover"
+	"transitforge/internal/health"
+	"transitforge/internal/model"
 )
 
 func pol() model.FailoverPolicy {

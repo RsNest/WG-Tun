@@ -8,7 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 
-	"proxyctl/internal/model"
+	"transitforge/internal/model"
 )
 
 type Metrics struct {
@@ -33,20 +33,20 @@ type Metrics struct {
 func New() *Metrics {
 	r := prometheus.NewRegistry()
 	m := &Metrics{reg: r}
-	m.AgentUp = prometheus.NewGauge(prometheus.GaugeOpts{Name: "proxyctl_agent_up", Help: "1 if the agent process is running"})
-	m.ReconcileSuccess = prometheus.NewGauge(prometheus.GaugeOpts{Name: "proxyctl_reconcile_success", Help: "1 if the last reconcile succeeded"})
-	m.ReconcileErrors = prometheus.NewCounter(prometheus.CounterOpts{Name: "proxyctl_reconcile_errors_total", Help: "Reconcile errors"})
-	m.TunnelUp = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "proxyctl_tunnel_up", Help: "Tunnel interface up"}, []string{"node", "backend", "transport"})
-	m.HandshakeAge = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "proxyctl_wireguard_handshake_age_seconds", Help: "WireGuard handshake age"}, []string{"node", "backend"})
-	m.WGRx = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "proxyctl_wireguard_rx_bytes_total", Help: "WireGuard RX bytes"}, []string{"node", "backend"})
-	m.WGTx = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "proxyctl_wireguard_tx_bytes_total", Help: "WireGuard TX bytes"}, []string{"node", "backend"})
-	m.ProbeSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "proxyctl_backend_probe_success", Help: "Backend probe success"}, []string{"node", "backend", "port"})
-	m.TransportState = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "proxyctl_transport_state", Help: "Transport state (1=active)"}, []string{"node", "backend", "state"})
-	m.FailbackTotal = prometheus.NewCounterVec(prometheus.CounterOpts{Name: "proxyctl_failback_total", Help: "Failback events"}, []string{"node", "backend"})
-	m.FailbackDuration = prometheus.NewHistogram(prometheus.HistogramOpts{Name: "proxyctl_failback_duration_seconds", Help: "Failback duration", Buckets: []float64{0.5, 1, 2, 5, 10, 30}})
-	m.ConfigApply = prometheus.NewCounter(prometheus.CounterOpts{Name: "proxyctl_config_apply_total", Help: "Config applies"})
-	m.ConfigApplyErrors = prometheus.NewCounter(prometheus.CounterOpts{Name: "proxyctl_config_apply_errors_total", Help: "Config apply errors"})
-	m.LastReconcile = prometheus.NewGauge(prometheus.GaugeOpts{Name: "proxyctl_last_successful_reconcile_timestamp", Help: "Unix timestamp of last successful reconcile"})
+	m.AgentUp = prometheus.NewGauge(prometheus.GaugeOpts{Name: "transitforge_agent_up", Help: "1 if the agent process is running"})
+	m.ReconcileSuccess = prometheus.NewGauge(prometheus.GaugeOpts{Name: "transitforge_reconcile_success", Help: "1 if the last reconcile succeeded"})
+	m.ReconcileErrors = prometheus.NewCounter(prometheus.CounterOpts{Name: "transitforge_reconcile_errors_total", Help: "Reconcile errors"})
+	m.TunnelUp = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "transitforge_tunnel_up", Help: "Tunnel interface up"}, []string{"node", "backend", "transport"})
+	m.HandshakeAge = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "transitforge_wireguard_handshake_age_seconds", Help: "WireGuard handshake age"}, []string{"node", "backend"})
+	m.WGRx = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "transitforge_wireguard_rx_bytes_total", Help: "WireGuard RX bytes"}, []string{"node", "backend"})
+	m.WGTx = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "transitforge_wireguard_tx_bytes_total", Help: "WireGuard TX bytes"}, []string{"node", "backend"})
+	m.ProbeSuccess = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "transitforge_backend_probe_success", Help: "Backend probe success"}, []string{"node", "backend", "port"})
+	m.TransportState = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "transitforge_transport_state", Help: "Transport state (1=active)"}, []string{"node", "backend", "state"})
+	m.FailbackTotal = prometheus.NewCounterVec(prometheus.CounterOpts{Name: "transitforge_failback_total", Help: "Failback events"}, []string{"node", "backend"})
+	m.FailbackDuration = prometheus.NewHistogram(prometheus.HistogramOpts{Name: "transitforge_failback_duration_seconds", Help: "Failback duration", Buckets: []float64{0.5, 1, 2, 5, 10, 30}})
+	m.ConfigApply = prometheus.NewCounter(prometheus.CounterOpts{Name: "transitforge_config_apply_total", Help: "Config applies"})
+	m.ConfigApplyErrors = prometheus.NewCounter(prometheus.CounterOpts{Name: "transitforge_config_apply_errors_total", Help: "Config apply errors"})
+	m.LastReconcile = prometheus.NewGauge(prometheus.GaugeOpts{Name: "transitforge_last_successful_reconcile_timestamp", Help: "Unix timestamp of last successful reconcile"})
 	r.MustRegister(m.AgentUp, m.ReconcileSuccess, m.ReconcileErrors, m.TunnelUp, m.HandshakeAge, m.WGRx, m.WGTx, m.ProbeSuccess, m.TransportState, m.FailbackTotal, m.FailbackDuration, m.ConfigApply, m.ConfigApplyErrors, m.LastReconcile)
 	m.AgentUp.Set(1)
 	return m

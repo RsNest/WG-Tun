@@ -3,17 +3,17 @@
 # shellcheck shell=bash
 
 SMOKE_CFG="${SMOKE_CFG:-/etc/haproxy/haproxy.cfg}"
-SMOKE_UNIT="${SMOKE_UNIT:-proxyctl-haproxy-reload.service}"
-SMOKE_DIR="${SMOKE_DIR:-/run/proxyctl/smoke}"
-SMOKE_STAMP="${SMOKE_STAMP:-/var/lib/proxyctl/smoke-tests.passed}"
-HAPROXY_LAST_GOOD="${HAPROXY_LAST_GOOD:-/var/lib/proxyctl/haproxy.last-good.cfg}"
+SMOKE_UNIT="${SMOKE_UNIT:-transitforge-haproxy-reload.service}"
+SMOKE_DIR="${SMOKE_DIR:-/run/transitforge/smoke}"
+SMOKE_STAMP="${SMOKE_STAMP:-/var/lib/transitforge/smoke-tests.passed}"
+HAPROXY_LAST_GOOD="${HAPROXY_LAST_GOOD:-/var/lib/transitforge/haproxy.last-good.cfg}"
 
 log() {
-  printf 'proxyctl-smoke: %s\n' "$*" >&2
+  printf 'transitforge-smoke: %s\n' "$*" >&2
 }
 
 die() {
-  printf 'proxyctl-smoke: FAIL %s\n' "$*" >&2
+  printf 'transitforge-smoke: FAIL %s\n' "$*" >&2
   exit 1
 }
 
@@ -37,7 +37,7 @@ sha256_file() {
 
 atomic_install_cfg() {
   local src="$1"
-  local tmp="${SMOKE_CFG}.proxyctl-smoke-tmp"
+  local tmp="${SMOKE_CFG}.transitforge-smoke-tmp"
   log "writing ${SMOKE_CFG} from ${src}"
   cp -a -- "$src" "$tmp"
   mv -f -- "$tmp" "$SMOKE_CFG"
@@ -82,8 +82,8 @@ count_event() {
 fail_with_journal() {
   local logf="$1"
   shift
-  printf 'proxyctl-smoke: FAIL %s\n' "$*" >&2
-  printf 'proxyctl-smoke: offending journal (%s):\n' "$logf" >&2
+  printf 'transitforge-smoke: FAIL %s\n' "$*" >&2
+  printf 'transitforge-smoke: offending journal (%s):\n' "$logf" >&2
   cat -- "$logf" >&2 || true
   exit 1
 }

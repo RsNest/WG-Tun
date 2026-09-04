@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"proxyctl/internal/config"
+	"transitforge/internal/config"
 )
 
 func TestLoadControllerYAML(t *testing.T) {
@@ -96,4 +96,34 @@ func TestAgentHaproxyReload(t *testing.T) {
 	if _, err := config.LoadAgent(bad); err == nil {
 		t.Fatal("expected invalid haproxy_reload")
 	}
+}
+
+func TestResolveDBPathRenamesLegacyFile(t *testing.T) {
+	dir := t.TempDir()
+	old := filepath.Join(dir, "proxyctl.db")
+	if err := os.WriteFile(old, []byte("sqlite"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(old+"-wal", []byte("wal"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := config.ResolveDBPath(dir)
+	want := filepath.Join(dir, "transitforge.db")
+	if got != want {
+		t.Fatalf("path %s", got)
+	}
+	if !fileExistsForTest(want) {
+		t.Fatal("expected renamed db")
+	}
+	if fileExistsForTest(old) {
+		t.Fatal("legacy db should have been renamed")
+	}
+	if !fileExistsForTest(want + "-wal") {
+		t.Fatal("expected renamed wal")
+	}
+}
+
+func fileExistsForTest(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
 }

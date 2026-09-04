@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"proxyctl/internal/cmdexec"
-	"proxyctl/internal/model"
-	"proxyctl/internal/validate"
+	"transitforge/internal/cmdexec"
+	"transitforge/internal/model"
+	"transitforge/internal/validate"
 )
 
 type DialFunc func(ctx context.Context, network, address string) error

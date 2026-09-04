@@ -1,38 +1,38 @@
 groups:
-  - name: proxyctl
+  - name: transitforge
     rules:
       - alert: AgentDown
-        expr: proxyctl_agent_up == 0
+        expr: transitforge_agent_up == 0
         for: 1m
         labels: {severity: critical}
         annotations:
-          summary: proxyctl agent is down
+          summary: transitforge agent is down
       - alert: ReconcileFailure
-        expr: increase(proxyctl_reconcile_errors_total[10m]) > 0
+        expr: increase(transitforge_reconcile_errors_total[10m]) > 0
         for: 5m
         labels: {severity: warning}
         annotations:
-          summary: proxyctl reconcile is failing
+          summary: transitforge reconcile is failing
       - alert: WireGuardHandshakeStale
-        expr: proxyctl_wireguard_handshake_age_seconds > 180
+        expr: transitforge_wireguard_handshake_age_seconds > 180
         for: 2m
         labels: {severity: warning}
         annotations:
           summary: WireGuard handshake is stale
       - alert: BackendUnavailable
-        expr: proxyctl_backend_probe_success == 0
+        expr: transitforge_backend_probe_success == 0
         for: 2m
         labels: {severity: warning}
         annotations:
           summary: backend probe failing
       - alert: TransportFailback
-        expr: proxyctl_transport_state{state="SSH_PRIMARY"} == 1
+        expr: transitforge_transport_state{state="SSH_PRIMARY"} == 1
         for: 1m
         labels: {severity: warning}
         annotations:
           summary: node is on SSH fallback transport
       - alert: NoHealthyTransport
-        expr: proxyctl_transport_state{state="DEGRADED"} == 1
+        expr: transitforge_transport_state{state="DEGRADED"} == 1
         for: 30s
         labels: {severity: critical}
         annotations:

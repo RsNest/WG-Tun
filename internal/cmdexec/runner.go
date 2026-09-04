@@ -37,7 +37,7 @@ func ValidateExecutable(executable string) error {
 	}
 	base := filepath.Base(executable)
 	if !allowed[base] {
-		return fmt.Errorf("executable %q is not in the proxyctl allowlist", base)
+		return fmt.Errorf("executable %q is not in the transitforge allowlist", base)
 	}
 	return nil
 }

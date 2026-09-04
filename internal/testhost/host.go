@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"proxyctl/internal/cmdexec"
+	"transitforge/internal/cmdexec"
 )
 
 // Host is an in-memory iptables/ip/wg simulator for tests. It implements CommandRunner.
@@ -521,8 +521,8 @@ func (h *Host) MappingRuleCount() int {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	n := 0
-	for _, r := range h.NAT["PROXYCTL_DNAT"] {
-		if strings.Contains(r, "proxyctl:mapping:") {
+	for _, r := range h.NAT["TRANSITFORGE_DNAT"] {
+		if strings.Contains(r, "transitforge:mapping:") {
 			n++
 		}
 	}

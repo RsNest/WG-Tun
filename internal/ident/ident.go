@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"proxyctl/internal/model"
+	"transitforge/internal/model"
 )
 
 func New() model.ID {

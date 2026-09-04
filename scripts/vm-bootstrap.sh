@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepare a throwaway Debian/Ubuntu VM for proxyctl live-overlay smoke tests.
+# Prepare a throwaway Debian/Ubuntu VM for transitforge live-overlay smoke tests.
 # Does not start the live agent. Idempotent.
 set -euo pipefail
 
@@ -52,14 +52,14 @@ fi
 log "validating existing ${SMOKE_CFG}"
 haproxy -c -f "$SMOKE_CFG"
 
-log "installing proxyctl HAProxy reload units (path unit only enabled)"
-install -d -m 0755 /usr/local/lib/proxyctl /var/lib/proxyctl /run/proxyctl /etc/proxyctl
-install -m 0755 "$ROOT/scripts/haproxy-reload-on-change.sh" /usr/local/lib/proxyctl/haproxy-reload-on-change.sh
-install -m 0644 "$ROOT/deploy/systemd/proxyctl-haproxy-reload.path" /etc/systemd/system/proxyctl-haproxy-reload.path
-install -m 0644 "$ROOT/deploy/systemd/proxyctl-haproxy-reload.service" /etc/systemd/system/proxyctl-haproxy-reload.service
+log "installing transitforge HAProxy reload units (path unit only enabled)"
+install -d -m 0755 /usr/local/lib/transitforge /var/lib/transitforge /run/transitforge /etc/transitforge
+install -m 0755 "$ROOT/scripts/haproxy-reload-on-change.sh" /usr/local/lib/transitforge/haproxy-reload-on-change.sh
+install -m 0644 "$ROOT/deploy/systemd/transitforge-haproxy-reload.path" /etc/systemd/system/transitforge-haproxy-reload.path
+install -m 0644 "$ROOT/deploy/systemd/transitforge-haproxy-reload.service" /etc/systemd/system/transitforge-haproxy-reload.service
 systemctl daemon-reload
-systemctl enable --now proxyctl-haproxy-reload.path
-systemctl disable proxyctl-haproxy-reload.service >/dev/null 2>&1 || true
+systemctl enable --now transitforge-haproxy-reload.path
+systemctl disable transitforge-haproxy-reload.service >/dev/null 2>&1 || true
 
 log "not starting live agent (compose overlay is a later step)"
 

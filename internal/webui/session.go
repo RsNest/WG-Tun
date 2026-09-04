@@ -9,12 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"proxyctl/internal/model"
+	"transitforge/internal/model"
 )
 
 const (
-	cookieName   = "proxyctl_ui"
-	localeCookie = "proxyctl_locale"
+	cookieName   = "transitforge_ui"
+	localeCookie = "transitforge_locale"
 	sessionTTL   = 12 * time.Hour
 	localeTTL    = 365 * 24 * time.Hour
 )

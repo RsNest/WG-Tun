@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"proxyctl/internal/model"
-	"proxyctl/internal/webui/i18n"
+	"transitforge/internal/model"
+	"transitforge/internal/webui/i18n"
 )
 
 //go:embed templates/*.html static/app.css static/app.js static/htmx.min.js static/LICENSE-htmx.txt
@@ -116,7 +116,7 @@ func statusKey(status string) string {
 	}
 }
 
-const navCookie = "proxyctl_nav"
+const navCookie = "transitforge_nav"
 
 func queryID(r *http.Request) string {
 	return strings.TrimSpace(r.URL.Query().Get("id"))

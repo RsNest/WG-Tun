@@ -1,4 +1,4 @@
-module proxyctl
+module transitforge
 
 go 1.26.0
 

@@ -1,6 +1,6 @@
-# proxyctl
+# transitforge
 
-Multi-node edge/proxy infrastructure manager: desired-state controller, rootful edge agent, and `proxctl` CLI.
+Multi-node edge/proxy infrastructure manager: desired-state controller, rootful edge agent, and `transitforge` CLI.
 
 This software configures **your own** nodes (firewall/NAT, WireGuard, HAProxy, SSH TUN systemd units). It is not an attack tool.
 
@@ -8,7 +8,7 @@ This software configures **your own** nodes (firewall/NAT, WireGuard, HAProxy, S
 
 - **controller** — TLS REST API + SQLite desired-state store (nodes, backends, mappings, tunnels, SNI routes, failover intents).
 - **agent** — reconciles host state every 10s: WireGuard, iptables managed chains, HAProxy managed sections, SSH TUN unit inspection, failback state machine.
-- **proxctl** — operator CLI (HMAC-signed Bearer requests).
+- **transitforge** — operator CLI (HMAC-signed Bearer requests).
 
 Stages 1–5 of the staged MVP are implemented. See `docs/ARCHITECTURE.md` and `docs/REMAINING_WORK.md`.
 
@@ -18,9 +18,9 @@ Canonical path (Docker Engine + Buildx, **no host Go**):
 
 ```bash
 docker build --target test .
-docker build --target controller -t ghcr.io/rsnest/wg-tun-controller:local .
-docker build --target agent -t ghcr.io/rsnest/wg-tun-agent:local .
-docker build --target proxctl -t ghcr.io/rsnest/wg-tun-proxctl:local .
+docker build --target controller -t ghcr.io/rsnest/transitforge-controller:local .
+docker build --target agent -t ghcr.io/rsnest/transitforge-agent:local .
+docker build --target cli -t ghcr.io/rsnest/transitforge-cli:local .
 ```
 
 Optional host Go (not required for CI or release artifacts):
@@ -29,29 +29,29 @@ Optional host Go (not required for CI or release artifacts):
 go fmt ./...
 go vet ./...
 go test ./...
-go build -o bin/proxyctl-controller ./cmd/controller
-go build -o bin/proxyctl-agent ./cmd/agent
-go build -o bin/proxctl ./cmd/proxctl
+go build -o bin/transitforge-controller ./cmd/controller
+go build -o bin/transitforge-agent ./cmd/agent
+go build -o bin/transitforge ./cmd/transitforge
 ```
 
 ## Run locally (lab)
 
 ```powershell
 # controller (plain HTTP for a local lab only)
-./bin/proxyctl-controller.exe --plain-http --listen 127.0.0.1:8080 --data-dir ./data
+./bin/transitforge-controller.exe --plain-http --listen 127.0.0.1:8080 --data-dir ./data
 
 # token is written once to ./data/bootstrap.token
-$env:PROXYCTL_CONTROLLER = "http://127.0.0.1:8080"
-$env:PROXYCTL_TOKEN = (Get-Content ./data/bootstrap.token).Trim()
+$env:TRANSITFORGE_CONTROLLER = "http://127.0.0.1:8080"
+$env:TRANSITFORGE_TOKEN = (Get-Content ./data/bootstrap.token).Trim()
 
-./bin/proxctl.exe --controller http://127.0.0.1:8080 --token-file ./data/bootstrap.token --insecure node add --name ru-edge-1 --public-ip 203.0.113.10
-./bin/proxctl.exe --controller http://127.0.0.1:8080 --token-file ./data/bootstrap.token --insecure backend add --name backend-a --node ru-edge-1 --address 10.200.1.2
-./bin/proxctl.exe --controller http://127.0.0.1:8080 --token-file ./data/bootstrap.token --insecure mapping add --node ru-edge-1 --backend backend-a --protocol UDP --public-port 51821 --backend-port 51820
-./bin/proxctl.exe --controller http://127.0.0.1:8080 --token-file ./data/bootstrap.token --insecure mapping add --node ru-edge-1 --backend backend-a --protocol TCP --public-port 443 --backend-port 443
-./bin/proxctl.exe --controller http://127.0.0.1:8080 --token-file ./data/bootstrap.token --insecure apply --node ru-edge-1 --dry-run
+./bin/transitforge.exe --controller http://127.0.0.1:8080 --token-file ./data/bootstrap.token --insecure node add --name ru-edge-1 --public-ip 203.0.113.10
+./bin/transitforge.exe --controller http://127.0.0.1:8080 --token-file ./data/bootstrap.token --insecure backend add --name backend-a --node ru-edge-1 --address 10.200.1.2
+./bin/transitforge.exe --controller http://127.0.0.1:8080 --token-file ./data/bootstrap.token --insecure mapping add --node ru-edge-1 --backend backend-a --protocol UDP --public-port 51821 --backend-port 51820
+./bin/transitforge.exe --controller http://127.0.0.1:8080 --token-file ./data/bootstrap.token --insecure mapping add --node ru-edge-1 --backend backend-a --protocol TCP --public-port 443 --backend-port 443
+./bin/transitforge.exe --controller http://127.0.0.1:8080 --token-file ./data/bootstrap.token --insecure apply --node ru-edge-1 --dry-run
 ```
 
-Default controller listen is `127.0.0.1:8443` with TLS (`tls.auto_self_signed: true` in `configs/example-controller.yaml`). Use `--insecure` with proxctl against the lab cert.
+Default controller listen is `127.0.0.1:8443` with TLS (`tls.auto_self_signed: true` in `configs/example-controller.yaml`). Use `--insecure` with transitforge against the lab cert.
 
 The example agent config has `dry_run_only: true` so it will not mutate iptables/WireGuard/HAProxy until you set that to false on a real edge node.
 
@@ -60,10 +60,10 @@ The example agent config has `dry_run_only: true` so it will not mutate iptables
 Optional operator console, compiled into the controller binary (Go `html/template` + HTMX). Disabled unless you set `--ui-listen`.
 
 ```powershell
-./bin/proxyctl-controller.exe --plain-http --listen 127.0.0.1:8080 --ui-listen 127.0.0.1:8444 --data-dir ./data
+./bin/transitforge-controller.exe --plain-http --listen 127.0.0.1:8080 --ui-listen 127.0.0.1:8444 --data-dir ./data
 ```
 
-Open `http://127.0.0.1:8444`, paste an **operator** or **readonly** API token (the same bootstrap token `proxctl` uses). The token is exchanged for a 12-hour HTTP-only cookie session and is never written into HTML. Agent-role tokens cannot sign in.
+Open `http://127.0.0.1:8444`, paste an **operator** or **readonly** API token (the same bootstrap token `transitforge` uses). The token is exchanged for a 12-hour HTTP-only cookie session and is never written into HTML. Agent-role tokens cannot sign in.
 
 Default bind is your choice at start time; **use loopback**. This is an operator tool, not a public website. If you bind it beyond localhost, put it behind the same network restrictions as the API (VPN, firewall, SSH tunnel). The UI listener is plain HTTP on purpose so it stays off the TLS API port.
 
@@ -100,15 +100,15 @@ bash scripts/install.sh --role controller --listen 127.0.0.1:8443
 bash scripts/install.sh --role agent --controller https://controller:8443 --token "$TOKEN" --node-name ru-edge-1
 ```
 
-The installer will not overwrite an existing HAProxy config or an existing proxyctl YAML/token file.
+The installer will not overwrite an existing HAProxy config or an existing transitforge YAML/token file.
 
 ## Docker
 
-Images: `ghcr.io/rsnest/wg-tun-controller`, `ghcr.io/rsnest/wg-tun-agent`, `ghcr.io/rsnest/wg-tun-proxctl` (linux/amd64). CI publishes `sha-<short>` and `main` on pushes to `main`, plus `v*` on Git tags. Deploy with `PROXYCTL_VERSION=sha-…` (not `latest`).
+Images: `ghcr.io/rsnest/transitforge-controller`, `ghcr.io/rsnest/transitforge-agent`, `ghcr.io/rsnest/transitforge-cli` (linux/amd64). CI publishes `sha-<short>` and `main` on pushes to `main`, plus `v*` on Git tags. Deploy with `TRANSITFORGE_VERSION=sha-…` (not `latest`).
 
 ```bash
 docker compose up -d --build
-docker compose --profile cli run --rm proxctl apply --node ru-edge-1 --dry-run
+docker compose --profile cli run --rm transitforge apply --node ru-edge-1 --dry-run
 ```
 
 Release pull: `docs/DOCKER.md`. Live overlay: `sudo bash scripts/run-smoke-tests.sh` then `sudo bash scripts/enable-live-overlay.sh`.

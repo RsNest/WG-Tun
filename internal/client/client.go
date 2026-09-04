@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"proxyctl/internal/auth"
-	"proxyctl/internal/model"
+	"transitforge/internal/auth"
+	"transitforge/internal/model"
 )
 
 type Client struct {
@@ -31,7 +31,7 @@ func New(baseURL, token string, insecure bool) *Client {
 		BaseURL:   strings.TrimRight(baseURL, "/"),
 		Token:     strings.TrimSpace(token),
 		HTTP:      &http.Client{Timeout: 30 * time.Second, Transport: tr},
-		UserAgent: "proxctl",
+		UserAgent: "transitforge",
 	}
 }
 

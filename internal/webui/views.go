@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"proxyctl/internal/model"
+	"transitforge/internal/model"
 )
 
 type Catalog struct {

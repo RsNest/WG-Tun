@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"proxyctl/internal/client"
-	"proxyctl/internal/model"
-	"proxyctl/internal/version"
+	"transitforge/internal/client"
+	"transitforge/internal/model"
+	"transitforge/internal/version"
 )
 
 type Options struct {
@@ -32,10 +32,10 @@ func Run(args []string, opt Options) error {
 	}
 	args, opt = parseGlobals(args, opt)
 	if len(args) == 0 {
-		return fmt.Errorf("usage: proxctl [--controller URL] [--token-file PATH] [--insecure] <command>")
+		return fmt.Errorf("usage: transitforge [--controller URL] [--token-file PATH] [--insecure] <command>")
 	}
 	if args[0] == "version" || args[0] == "--version" {
-		fmt.Fprintln(opt.Stdout, version.Line("proxctl"))
+		fmt.Fprintln(opt.Stdout, version.Line("transitforge"))
 		return nil
 	}
 	opt, err := applyEnv(opt)
@@ -71,7 +71,7 @@ func Run(args []string, opt Options) error {
 	}
 }
 
-const helpText = `proxctl — proxyctl operator CLI
+const helpText = `transitforge — TransitForge operator CLI
 
 Commands:
   node add --name NAME [--public-ip IP]
@@ -506,10 +506,10 @@ func splitComma(s string) []string {
 
 func applyEnv(opt Options) (Options, error) {
 	if opt.Controller == "" {
-		opt.Controller = envOr("PROXYCTL_CONTROLLER", "https://127.0.0.1:8443")
+		opt.Controller = envOr("TRANSITFORGE_CONTROLLER", "https://127.0.0.1:8443")
 	}
 	if opt.TokenFile == "" {
-		opt.TokenFile = os.Getenv("PROXYCTL_TOKEN_FILE")
+		opt.TokenFile = os.Getenv("TRANSITFORGE_TOKEN_FILE")
 	}
 	if opt.Token == "" && opt.TokenFile != "" {
 		b, err := os.ReadFile(opt.TokenFile)
@@ -519,10 +519,10 @@ func applyEnv(opt Options) (Options, error) {
 		opt.Token = strings.TrimSpace(string(b))
 	}
 	if opt.Token == "" {
-		opt.Token = os.Getenv("PROXYCTL_TOKEN")
+		opt.Token = os.Getenv("TRANSITFORGE_TOKEN")
 	}
 	if !opt.Insecure {
-		opt.Insecure = envTruthy("PROXYCTL_INSECURE")
+		opt.Insecure = envTruthy("TRANSITFORGE_INSECURE")
 	}
 	return opt, nil
 }

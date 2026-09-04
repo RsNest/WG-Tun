@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"proxyctl/internal/webui/i18n"
+	"transitforge/internal/webui/i18n"
 )
 
 func (s *Server) locale(r *http.Request) string {

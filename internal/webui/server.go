@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"proxyctl/internal/auth"
-	"proxyctl/internal/logging"
-	"proxyctl/internal/model"
-	"proxyctl/internal/webui/i18n"
+	"transitforge/internal/auth"
+	"transitforge/internal/logging"
+	"transitforge/internal/model"
+	"transitforge/internal/webui/i18n"
 )
 
 type Config struct {

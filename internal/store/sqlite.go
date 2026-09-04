@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"proxyctl/internal/model"
+	"transitforge/internal/model"
 
 	_ "modernc.org/sqlite"
 )

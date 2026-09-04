@@ -19,18 +19,18 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"proxyctl/internal/model"
-	"proxyctl/internal/store"
+	"transitforge/internal/model"
+	"transitforge/internal/store"
 )
 
 const (
-	HeaderTimestamp = "X-Proxyctl-Timestamp"
-	HeaderSignature = "X-Proxyctl-Signature"
-	HeaderUIName    = "X-Proxyctl-UI-Name"
-	HeaderUIRole    = "X-Proxyctl-UI-Role"
-	HeaderUIUser    = "X-Proxyctl-UI-User"
-	HeaderUITime    = "X-Proxyctl-UI-Timestamp"
-	HeaderUISig     = "X-Proxyctl-UI-Signature"
+	HeaderTimestamp = "X-TransitForge-Timestamp"
+	HeaderSignature = "X-TransitForge-Signature"
+	HeaderUIName    = "X-TransitForge-UI-Name"
+	HeaderUIRole    = "X-TransitForge-UI-Role"
+	HeaderUIUser    = "X-TransitForge-UI-User"
+	HeaderUITime    = "X-TransitForge-UI-Timestamp"
+	HeaderUISig     = "X-TransitForge-UI-Signature"
 	bootstrapName   = "bootstrap-operator"
 )
 
@@ -54,7 +54,7 @@ func New(st store.Store, hmacRequired bool, maxSkew time.Duration) *Authenticato
 	}
 	key := make([]byte, 32)
 	if _, err := rand.Read(key); err != nil {
-		key = []byte("proxyctl-ui-fallback-key-not-for-prod")
+		key = []byte("transitforge-ui-fallback-key-not-for-prod")
 	}
 	return &Authenticator{store: st, hmacReq: hmacRequired, maxSkew: maxSkew, cost: bcrypt.DefaultCost, uiKey: key}
 }

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"proxyctl/internal/validate"
+	"transitforge/internal/validate"
 )
 
 func wrapVal(err error) error {

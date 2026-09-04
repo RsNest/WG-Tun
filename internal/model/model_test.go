@@ -3,7 +3,7 @@ package model_test
 import (
 	"testing"
 
-	"proxyctl/internal/model"
+	"transitforge/internal/model"
 )
 
 func TestNodeValidate(t *testing.T) {
@@ -29,7 +29,7 @@ func TestTunnelValidate(t *testing.T) {
 	ssh := model.Tunnel{
 		NodeID: "n", BackendID: "b", Type: model.TunnelSSHTUN,
 		InterfaceName: "tun-b", LocalOverlayIP: "10.200.2.1", RemoteOverlayIP: "10.200.2.2",
-		ServiceName: "proxyctl-ssh.service",
+		ServiceName: "transitforge-ssh.service",
 	}
 	if err := ssh.Validate(); err != nil {
 		t.Fatal(err)

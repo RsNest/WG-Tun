@@ -7,8 +7,8 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"proxyctl/internal/model"
-	"proxyctl/internal/store"
+	"transitforge/internal/model"
+	"transitforge/internal/store"
 )
 
 func TestHumanAccountsHappyPath(t *testing.T) {

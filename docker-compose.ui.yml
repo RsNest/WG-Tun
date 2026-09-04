@@ -8,6 +8,6 @@ services:
       - "8444:8444"
     command:
       - --config
-      - /etc/proxyctl/controller.yaml
+      - /etc/transitforge/controller.yaml
       - --ui-listen
       - 0.0.0.0:8444

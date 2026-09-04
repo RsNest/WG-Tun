@@ -7,9 +7,9 @@ import (
 	"net/url"
 	"strings"
 
-	"proxyctl/internal/auth"
-	"proxyctl/internal/client"
-	"proxyctl/internal/model"
+	"transitforge/internal/auth"
+	"transitforge/internal/client"
+	"transitforge/internal/model"
 )
 
 // API is the controller REST surface the UI is allowed to call.
@@ -47,7 +47,7 @@ type liveAPI struct {
 
 func newLiveAPI(token string, rt http.RoundTripper) API {
 	c := client.New("http://webui.internal", token, true)
-	c.UserAgent = "proxyctl-webui"
+	c.UserAgent = "transitforge-webui"
 	c.HTTP = &http.Client{Transport: rt, Timeout: c.HTTP.Timeout}
 	return &liveAPI{c: c}
 }

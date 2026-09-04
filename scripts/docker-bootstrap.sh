@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # Wait for controller, then register the lab edge node (idempotent).
-# proxctl reads PROXYCTL_CONTROLLER / PROXYCTL_TOKEN_FILE / PROXYCTL_INSECURE;
+# transitforge reads TRANSITFORGE_CONTROLLER / TRANSITFORGE_TOKEN_FILE / TRANSITFORGE_INSECURE;
 # flags are passed as well so bootstrap does not depend on env-only parsing.
 set -euo pipefail
 
-CONTROLLER="${PROXYCTL_CONTROLLER:-https://controller:8443}"
-TOKEN_FILE="${PROXYCTL_TOKEN_FILE:-/data/bootstrap.token}"
-NODE_NAME="${PROXYCTL_NODE_NAME:-ru-edge-1}"
-PUBLIC_IP="${PROXYCTL_NODE_PUBLIC_IP:-203.0.113.10}"
-BACKEND_NAME="${PROXYCTL_BACKEND_NAME:-backend-a}"
-BACKEND_ADDR="${PROXYCTL_BACKEND_ADDR:-10.200.1.2}"
+CONTROLLER="${TRANSITFORGE_CONTROLLER:-https://controller:8443}"
+TOKEN_FILE="${TRANSITFORGE_TOKEN_FILE:-/data/bootstrap.token}"
+NODE_NAME="${TRANSITFORGE_NODE_NAME:-ru-edge-1}"
+PUBLIC_IP="${TRANSITFORGE_NODE_PUBLIC_IP:-203.0.113.10}"
+BACKEND_NAME="${TRANSITFORGE_BACKEND_NAME:-backend-a}"
+BACKEND_ADDR="${TRANSITFORGE_BACKEND_ADDR:-10.200.1.2}"
 
-export PROXYCTL_CONTROLLER="$CONTROLLER"
-export PROXYCTL_TOKEN_FILE="$TOKEN_FILE"
-export PROXYCTL_INSECURE="${PROXYCTL_INSECURE:-true}"
+export TRANSITFORGE_CONTROLLER="$CONTROLLER"
+export TRANSITFORGE_TOKEN_FILE="$TOKEN_FILE"
+export TRANSITFORGE_INSECURE="${TRANSITFORGE_INSECURE:-true}"
 
 echo "waiting for controller $CONTROLLER and token $TOKEN_FILE"
 ok=0
@@ -30,7 +30,7 @@ if [ "$ok" -ne 1 ]; then
 fi
 
 pc() {
-  proxctl --controller "$CONTROLLER" --token-file "$TOKEN_FILE" --insecure "$@"
+  transitforge --controller "$CONTROLLER" --token-file "$TOKEN_FILE" --insecure "$@"
 }
 
 if pc node list | grep -q "\"name\": \"$NODE_NAME\""; then

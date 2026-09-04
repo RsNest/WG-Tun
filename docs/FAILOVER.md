@@ -20,8 +20,8 @@ systemd unit active **and** interface present **and** overlay ping **and** TCP p
 
 ## Persistence
 
-- `/run/proxyctl/transport-state.json`
-- flock on `/run/proxyctl/transport.lock` (timeout 5s, meta TTL 30s, never steal)
+- `/run/transitforge/transport-state.json`
+- flock on `/run/transitforge/transport.lock` (timeout 5s, meta TTL 30s, never steal)
 
 ## Cutover order
 
@@ -32,7 +32,7 @@ On failure: restore firewall, restore HAProxy, `systemctl reload haproxy`, resto
 ## Operator Failback
 
 ```bash
-proxctl failback --node ru-edge-1 --backend backend-a
+transitforge failback --node ru-edge-1 --backend backend-a
 ```
 
 Failback is the explicit human-triggered transition `SSH_PRIMARY` → `WG_PRIMARY`. The controller stores the intent (HTTP 202); the agent consumes it on the next cycle if WireGuard is healthy.

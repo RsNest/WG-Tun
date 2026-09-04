@@ -15,8 +15,8 @@ fi
 if [ ! -f "$HAPROXY_LAST_GOOD" ]; then
   die "missing last-good ${HAPROXY_LAST_GOOD}; seed with: systemctl start ${SMOKE_UNIT}"
 fi
-if ! systemctl is-enabled proxyctl-haproxy-reload.path >/dev/null 2>&1; then
-  die "enable proxyctl-haproxy-reload.path first (scripts/vm-bootstrap.sh)"
+if ! systemctl is-enabled transitforge-haproxy-reload.path >/dev/null 2>&1; then
+  die "enable transitforge-haproxy-reload.path first (scripts/vm-bootstrap.sh)"
 fi
 
 mkdir -p -- "$SMOKE_DIR"

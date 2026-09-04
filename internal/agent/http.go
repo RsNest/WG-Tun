@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"proxyctl/internal/metrics"
-	"proxyctl/internal/version"
+	"transitforge/internal/metrics"
+	"transitforge/internal/version"
 )
 
 func ServeHTTP(ctx context.Context, addr string, a *Agent, m *metrics.Metrics) error {

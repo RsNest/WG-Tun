@@ -1,12 +1,12 @@
 openapi: 3.0.3
 info:
-  title: proxyctl API
+  title: transitforge API
   version: 0.5.0
   description: |
     Multi-node edge/proxy infrastructure manager.
     Authentication: Bearer token plus HMAC-SHA256 over
     `timestamp + method + path + sha256(body)` using the bearer token as key.
-    Headers: `Authorization: Bearer <token>`, `X-Proxyctl-Timestamp`, `X-Proxyctl-Signature`.
+    Headers: `Authorization: Bearer <token>`, `X-TransitForge-Timestamp`, `X-TransitForge-Signature`.
     Roles: operator (mutate+read), readonly (read), agent (mutate+read), administrator (human UI; mutate+read+users).
     Human users: GET/POST /api/v1/users* (administrator, or self for TOTP/locale/password).
     Canonical contract: docs/ARCHITECTURE.md. This file must stay synchronized with it.

@@ -10,13 +10,13 @@ import (
 	"sync"
 	"time"
 
-	"proxyctl/internal/cmdexec"
-	"proxyctl/internal/model"
-	"proxyctl/internal/reconcile"
-	"proxyctl/internal/validate"
+	"transitforge/internal/cmdexec"
+	"transitforge/internal/model"
+	"transitforge/internal/reconcile"
+	"transitforge/internal/validate"
 )
 
-// IptablesNftManager manages dedicated PROXYCTL_* chains via the iptables CLI
+// IptablesNftManager manages dedicated TRANSITFORGE_* chains via the iptables CLI
 // (nft-compatible iptables-nft included). It never flushes PREROUTING/FORWARD/POSTROUTING.
 type IptablesNftManager struct {
 	Runner    cmdexec.CommandRunner
@@ -44,14 +44,27 @@ func (m *IptablesNftManager) iptables(ctx context.Context, args ...string) ([]by
 	return out, nil
 }
 
-func (m *IptablesNftManager) Discover(ctx context.Context) ([]model.FirewallRule, []model.Conflict, error) {
-	var rules []model.FirewallRule
-	var conflicts []model.Conflict
-	for _, item := range []struct{ table, chain string }{
+type chainView struct{ table, chain string }
+
+func iptablesChainViews() []chainView {
+	return []chainView{
 		{TableNAT, ChainDNAT},
 		{TableFilter, ChainForward},
 		{TableNAT, ChainSNAT},
-	} {
+		{TableNAT, legacyChainDNAT},
+		{TableFilter, legacyChainForward},
+		{TableNAT, legacyChainSNAT},
+	}
+}
+
+func isDNATChain(chain string) bool {
+	return chain == ChainDNAT || chain == legacyChainDNAT
+}
+
+func (m *IptablesNftManager) Discover(ctx context.Context) ([]model.FirewallRule, []model.Conflict, error) {
+	var rules []model.FirewallRule
+	var conflicts []model.Conflict
+	for _, item := range iptablesChainViews() {
 		out, err := m.iptables(ctx, "-t", item.table, "-S", item.chain)
 		if err != nil {
 			if chainMissing(err) {
@@ -65,15 +78,15 @@ func (m *IptablesNftManager) Discover(ctx context.Context) ([]model.FirewallRule
 				continue
 			}
 			cmt := parseComment(line)
-			managed := strings.HasPrefix(cmt, "proxyctl:mapping:")
-			if cmt != "" && !managed && cmt != JumpComment {
+			managed := isManagedMappingComment(cmt)
+			if cmt != "" && !managed && cmt != JumpComment && cmt != legacyJumpComment {
 				conflicts = append(conflicts, model.Conflict{
 					Code:    "UNMANAGED_RULE",
 					Target:  item.chain,
-					Message: "unmanaged rule in proxyctl chain: " + line,
+					Message: "unmanaged rule in TransitForge chain: " + line,
 				})
 			}
-			if managed && item.chain != ChainDNAT {
+			if managed && !isDNATChain(item.chain) {
 				continue
 			}
 			spec := specFromSaveLine(line, cmt)
@@ -201,11 +214,7 @@ func (m *IptablesNftManager) Rollback(ctx context.Context) error {
 
 func (m *IptablesNftManager) Counters(ctx context.Context) ([]Counters, error) {
 	var out []Counters
-	for _, item := range []struct{ table, chain string }{
-		{TableNAT, ChainDNAT},
-		{TableFilter, ChainForward},
-		{TableNAT, ChainSNAT},
-	} {
+	for _, item := range iptablesChainViews() {
 		b, err := m.iptables(ctx, "-t", item.table, "-L", item.chain, "-n", "-v", "-x")
 		if err != nil {
 			if chainMissing(err) {
@@ -270,7 +279,21 @@ func (m *IptablesNftManager) ensureInfrastructure(ctx context.Context) error {
 			}
 		}
 	}
+	m.dropLegacyChains(ctx)
 	return nil
+}
+
+func (m *IptablesNftManager) dropLegacyChains(ctx context.Context) {
+	type jump struct{ table, parent, chain, comment string }
+	for _, j := range []jump{
+		{TableNAT, "PREROUTING", legacyChainDNAT, legacyJumpComment},
+		{TableFilter, "FORWARD", legacyChainForward, legacyJumpComment},
+		{TableNAT, "POSTROUTING", legacyChainSNAT, legacyJumpComment},
+	} {
+		_, _ = m.iptables(ctx, "-t", j.table, "-D", j.parent, "-m", "comment", "--comment", j.comment, "-j", j.chain)
+		_, _ = m.iptables(ctx, "-t", j.table, "-F", j.chain)
+		_, _ = m.iptables(ctx, "-t", j.table, "-X", j.chain)
+	}
 }
 
 func (m *IptablesNftManager) addMappingRules(ctx context.Context, mp model.PortMapping, addr string) ([]iptablesRule, error) {
@@ -312,11 +335,7 @@ func (m *IptablesNftManager) deleteByComment(ctx context.Context, cmt string) er
 
 func (m *IptablesNftManager) deleteByCommentCopy(ctx context.Context, cmt string) ([]iptablesRule, error) {
 	var deleted []iptablesRule
-	for _, item := range []struct{ table, chain string }{
-		{TableNAT, ChainDNAT},
-		{TableFilter, ChainForward},
-		{TableNAT, ChainSNAT},
-	} {
+	for _, item := range iptablesChainViews() {
 		out, err := m.iptables(ctx, "-t", item.table, "-S", item.chain)
 		if err != nil {
 			if chainMissing(err) {
@@ -374,7 +393,7 @@ func parseComment(line string) string {
 }
 
 func specFromSaveLine(line, cmt string) string {
-	if !strings.HasPrefix(cmt, "proxyctl:mapping:") {
+	if !isManagedMappingComment(cmt) {
 		return line
 	}
 	proto := ""

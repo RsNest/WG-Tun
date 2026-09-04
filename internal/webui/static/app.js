@@ -57,7 +57,7 @@
     if (btn && !btn.disabled) btn.disabled = true;
   });
 
-  var navCookie = "proxyctl_nav";
+  var navCookie = "transitforge_nav";
   function setNavCollapsed(on) {
     document.body.classList.toggle("nav-collapsed", on);
     document.cookie = navCookie + "=" + (on ? "collapsed" : "expanded") + "; Path=/; Max-Age=31536000; SameSite=Lax";
