@@ -1,0 +1,82 @@
+name: proxyctl
+
+services:
+  controller:
+    build:
+      context: .
+      target: controller
+    image: proxyctl-controller:local
+    hostname: controller
+    ports:
+      - "8443:8443"
+    volumes:
+      - proxyctl-data:/data
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/proxyctl-controller", "healthcheck", "--url", "https://127.0.0.1:8443/readyz", "-k"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  bootstrap:
+    build:
+      context: .
+      target: proxctl
+    image: proxyctl-proxctl:local
+    depends_on:
+      controller:
+        condition: service_healthy
+    volumes:
+      - proxyctl-data:/data:ro
+    environment:
+      PROXYCTL_CONTROLLER: https://controller:8443
+      PROXYCTL_TOKEN_FILE: /data/bootstrap.token
+      PROXYCTL_INSECURE: "true"
+      PROXYCTL_NODE_NAME: ru-edge-1
+    entrypoint: ["/usr/local/bin/docker-bootstrap.sh"]
+    restart: "no"
+
+  agent:
+    build:
+      context: .
+      target: agent
+    image: proxyctl-agent:local
+    hostname: ru-edge-1
+    depends_on:
+      controller:
+        condition: service_healthy
+      bootstrap:
+        condition: service_completed_successfully
+    ports:
+      - "9101:9101"
+    volumes:
+      - proxyctl-data:/data:ro
+      - ./configs/docker-agent.yaml:/etc/proxyctl/agent.yaml:ro
+    restart: unless-stopped
+
+  proxctl:
+    image: proxyctl-proxctl:local
+    profiles: ["cli"]
+    depends_on:
+      controller:
+        condition: service_healthy
+    volumes:
+      - proxyctl-data:/data:ro
+    working_dir: /data
+    entrypoint: ["proxctl", "--controller", "https://controller:8443", "--token-file", "/data/bootstrap.token", "--insecure"]
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: ["obs"]
+    volumes:
+      - ./deploy/prometheus/prometheus.docker.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - controller
+      - agent
+
+volumes:
+  proxyctl-data:

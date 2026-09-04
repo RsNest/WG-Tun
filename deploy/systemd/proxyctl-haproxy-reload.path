@@ -1,0 +1,12 @@
+[Unit]
+Description=Watch HAProxy config written by proxyctl and reload the host service
+# File watch only. Do not After=network-online.target or docker.service.
+
+[Path]
+PathModified=/etc/haproxy/haproxy.cfg
+PathChanged=/etc/haproxy/haproxy.cfg
+Unit=proxyctl-haproxy-reload.service
+MakeDirectory=no
+
+[Install]
+WantedBy=multi-user.target

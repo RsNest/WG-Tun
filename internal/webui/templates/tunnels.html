@@ -1,0 +1,57 @@
+{{define "tunnels"}}
+{{template "header" .}}
+<h1>Tunnels</h1>
+<p class="lead">Overlay links from a node to a backend. Private keys are path references on the node — never pasted here.</p>
+
+<div class="panel">
+  {{if not .Data.Rows}}<p class="empty">No tunnels.</p>{{else}}
+  <table>
+    <thead><tr><th>Type</th><th>Node</th><th>Backend</th><th>Interface</th><th>Handshake</th><th>RX</th><th>TX</th></tr></thead>
+    <tbody>
+    {{range .Data.Rows}}
+      <tr>
+        <td class="mono">{{.Type}}</td>
+        <td>{{.Node}}</td>
+        <td>{{.Backend}}</td>
+        <td class="mono">{{.Interface}}</td>
+        <td class="mono">{{.Handshake}}</td>
+        <td class="mono">{{.Rx}}</td>
+        <td class="mono">{{.Tx}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
+</div>
+
+{{if .CanWrite}}
+<div class="panel">
+  <h2>Create WireGuard tunnel</h2>
+  <form method="post" action="/tunnels" class="form-grid">
+    <label>Node
+      <select name="node_id" required>
+        {{range .Data.Nodes}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+      </select>
+    </label>
+    <label>Backend
+      <select name="backend_id" required>
+        {{range .Data.Backends}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+      </select>
+    </label>
+    <label>Interface <input name="interface_name" required placeholder="wg-a"></label>
+    <label>Listen port <input name="listen_port" type="number" required value="51820"></label>
+    <label>Local overlay IP <input name="local_overlay_ip" required placeholder="10.200.1.1"></label>
+    <label>Remote overlay IP <input name="remote_overlay_ip" required placeholder="10.200.1.2"></label>
+    <label>Endpoint <input name="endpoint" placeholder="198.51.100.20:51820"></label>
+    <label>Allowed IPs <input name="allowed_ips" placeholder="10.200.1.2/32"></label>
+    <label>Keepalive <input name="persistent_keepalive" type="number" value="25"></label>
+    <label>Priority <input name="priority" type="number" value="0"></label>
+    <label class="wide">Private key file path on the node
+      <input name="private_key_path" required placeholder="/etc/proxyctl/keys/wg-a.key">
+    </label>
+    <div class="wide"><button type="submit">Create</button></div>
+  </form>
+</div>
+{{end}}
+{{template "footer" .}}
+{{end}}

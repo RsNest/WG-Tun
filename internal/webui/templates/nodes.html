@@ -1,0 +1,123 @@
+{{define "nodes"}}
+{{template "header" .}}
+<h1>Nodes</h1>
+<p class="lead">Edge boxes on the RU side. DNS for customer domains should point at a node’s public IP.</p>
+<div class="panel">
+  {{if not .Data}}
+    <p class="empty">No nodes.</p>
+  {{else}}
+  <table>
+    <thead><tr><th>Name</th><th>Public IP</th><th>ID</th></tr></thead>
+    <tbody>
+    {{range .Data}}
+      <tr>
+        <td><a href="/nodes/{{.ID}}">{{.Name}}</a></td>
+        <td class="mono">{{.PublicIP}}</td>
+        <td class="mono muted">{{.ID}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
+</div>
+{{template "footer" .}}
+{{end}}
+
+{{define "node_detail"}}
+{{template "header" .}}
+{{$n := .Data.Node}}
+{{$card := .Data.Card}}
+{{$cat := .Data.Catalog}}
+<h1>{{$n.Name}}</h1>
+<p class="lead mono">{{$n.PublicIP}} · {{$n.ID}}</p>
+<p><span class="badge {{$card.StatusClass}}">{{$card.Status}}</span> <span class="transport">{{$card.Transport}}</span></p>
+
+{{if .CanWrite}}
+<div class="actions">
+  <button type="button" hx-post="/nodes/{{$n.ID}}/apply" hx-vals='{"dry_run":"true"}' hx-target="#plan" hx-swap="innerHTML">Dry-run</button>
+  <button type="button" class="secondary" hx-post="/nodes/{{$n.ID}}/apply" hx-vals='{"dry_run":"false"}' hx-target="#plan" hx-swap="innerHTML">Apply</button>
+</div>
+{{end}}
+
+<div class="panel">
+  <h2>Desired vs actual</h2>
+  <div id="plan"><pre class="plan">{{.Data.Plan}}</pre></div>
+</div>
+
+<div class="panel">
+  <h2>Tunnels</h2>
+  {{if not .Data.Tunnels}}<p class="empty">None.</p>{{else}}
+  <table>
+    <thead><tr><th>Type</th><th>Interface</th><th>Backend</th><th>Handshake</th><th>RX / TX</th></tr></thead>
+    <tbody>
+    {{range .Data.Tunnels}}
+      <tr>
+        <td class="mono">{{.Type}}</td>
+        <td class="mono">{{.Interface}}</td>
+        <td>{{.Backend}}</td>
+        <td class="mono">{{.Handshake}}</td>
+        <td class="mono">{{.Rx}} / {{.Tx}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
+</div>
+
+<div class="panel">
+  <h2>Mappings</h2>
+  {{if not .Data.Mappings}}<p class="empty">None.</p>{{else}}
+  <table>
+    <thead><tr><th>Proto</th><th>Public</th><th>Backend</th><th>Port</th><th>Enabled</th></tr></thead>
+    <tbody>
+    {{range .Data.Mappings}}
+      <tr>
+        <td>{{.Protocol}}</td>
+        <td class="mono">{{.PublicPort}}</td>
+        <td>{{$cat.BackendName .BackendID}}</td>
+        <td class="mono">{{.BackendPort}}</td>
+        <td>{{if .Enabled}}yes{{else}}no{{end}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
+</div>
+
+<div class="panel">
+  <h2>SNI routes</h2>
+  {{if not .Data.Sni}}<p class="empty">None.</p>{{else}}
+  <table>
+    <thead><tr><th>Listen</th><th>Match</th><th>Backend</th><th>Priority</th></tr></thead>
+    <tbody>
+    {{range .Data.Sni}}
+      <tr>
+        <td class="mono">{{.Listen}}</td>
+        <td class="mono">{{.Match}}</td>
+        <td>{{.Backend}}</td>
+        <td>{{.Priority}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
+</div>
+
+{{if and .CanWrite .Data.CanFailback}}
+<div class="panel">
+  <h2>Failback</h2>
+  <p class="muted">Records a fail-forward intent (SSH → WireGuard). Confirm because this is a transport cutover.</p>
+  <form method="post" action="/nodes/{{$n.ID}}/failback" hx-confirm="Record a fail-forward intent for this node? This is a transport cutover.">
+    <label>Backend
+      <select name="backend" required>
+        {{range .Data.Failback}}
+          <option value="{{.Name}}">{{.Name}}</option>
+        {{end}}
+      </select>
+    </label>
+    <p><button class="danger" type="submit">Failback</button></p>
+  </form>
+</div>
+{{end}}
+{{template "footer" .}}
+{{end}}

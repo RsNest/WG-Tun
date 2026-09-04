@@ -1,0 +1,12 @@
+# Example agent config. Topology values here are fixtures, not core defaults.
+node_name: ru-edge-1
+controller_url: https://127.0.0.1:8443
+token_file: ./data/bootstrap.token
+reconcile_interval: 10s
+dry_run_only: true
+state_dir: /run/proxyctl
+haproxy_config: /etc/haproxy/haproxy.cfg
+haproxy_reload: systemctl
+tls:
+  insecure_skip_verify: true
+metrics_listen: "127.0.0.1:9101"

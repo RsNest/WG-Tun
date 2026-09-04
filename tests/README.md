@@ -1,0 +1,1 @@
+Integration-style tests live next to packages (`internal/engine`, `internal/api`, …) using `internal/testhost`. This directory is reserved for future VM-level tests that must not run in `go test ./...`.

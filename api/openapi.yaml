@@ -1,0 +1,338 @@
+openapi: 3.0.3
+info:
+  title: proxyctl API
+  version: 0.5.0
+  description: |
+    Multi-node edge/proxy infrastructure manager.
+    Authentication: Bearer token plus HMAC-SHA256 over
+    `timestamp + method + path + sha256(body)` using the bearer token as key.
+    Headers: `Authorization: Bearer <token>`, `X-Proxyctl-Timestamp`, `X-Proxyctl-Signature`.
+    Roles: operator (mutate+read), readonly (read), agent (mutate+read for assigned node).
+servers:
+  - url: https://127.0.0.1:8443
+paths:
+  /healthz:
+    get:
+      summary: Liveness
+      responses:
+        "200":
+          description: process alive
+  /readyz:
+    get:
+      summary: Readiness (DB reachable, engine initialized)
+      responses:
+        "200":
+          description: ready
+        "503":
+          description: not ready
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      responses:
+        "200":
+          description: exposition format
+        "501":
+          description: metrics not enabled
+  /api/v1/nodes:
+    get:
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: list nodes
+    post:
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Node"
+      responses:
+        "201":
+          description: created
+  /api/v1/nodes/{id}:
+    get:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: node
+  /api/v1/nodes/{id}/desired-state:
+    get:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: desired state
+  /api/v1/nodes/{id}/actual-state:
+    get:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: last reported actual-state and agent status (empty if none)
+    post:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "202":
+          description: recorded
+  /api/v1/nodes/{id}/apply:
+    post:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyRequest"
+      responses:
+        "200":
+          description: plan or apply result
+        "409":
+          description: CONFLICT
+  /api/v1/nodes/{id}/failback:
+    post:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "501":
+          description: not implemented until Stage 4
+  /api/v1/backends:
+    get:
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: list
+    post:
+      security: [{bearerAuth: []}]
+      responses:
+        "201":
+          description: created
+  /api/v1/backends/{id}:
+    get:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: backend
+    put:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: updated
+  /api/v1/mappings:
+    get:
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: list
+    post:
+      security: [{bearerAuth: []}]
+      responses:
+        "201":
+          description: created
+  /api/v1/mappings/{id}:
+    get:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: mapping
+    put:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: updated
+    patch:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled: {type: boolean}
+      responses:
+        "200":
+          description: enabled flag updated (omitted from desired-state when false)
+    delete:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "204":
+          description: deleted
+  /api/v1/tunnels:
+    get:
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: list
+    post:
+      security: [{bearerAuth: []}]
+      responses:
+        "201":
+          description: created
+  /api/v1/tunnels/{id}/status:
+    get:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: status
+  /api/v1/sni-routes:
+    get:
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: list
+    post:
+      security: [{bearerAuth: []}]
+      responses:
+        "201":
+          description: created
+  /api/v1/sni-routes/{id}:
+    get:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: route
+    put:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: updated
+  /api/v1/audit:
+    get:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: query
+          name: node
+          schema: {type: string}
+        - in: query
+          name: backend
+          schema: {type: string}
+        - in: query
+          name: from
+          schema: {type: string}
+          description: YYYY-MM-DD or RFC3339
+        - in: query
+          name: to
+          schema: {type: string}
+      responses:
+        "200":
+          description: recent audit events
+  /api/v1/whoami:
+    get:
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: caller name and role
+  /api/v1/tokens:
+    get:
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: token metadata (operator only; hashes omitted)
+    post:
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, role]
+              properties:
+                name: {type: string}
+                role: {type: string, enum: [operator, readonly, agent]}
+      responses:
+        "201":
+          description: minted token (plaintext returned once)
+        "403":
+          description: caller is not operator
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    Node:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string}
+        public_ip: {type: string}
+        labels:
+          type: object
+          additionalProperties: {type: string}
+    ApplyRequest:
+      type: object
+      properties:
+        dry_run: {type: boolean}

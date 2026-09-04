@@ -1,0 +1,22 @@
+[Unit]
+Description=proxyctl controller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=proxyctl
+Group=proxyctl
+ExecStart=/usr/local/bin/proxyctl-controller --config /etc/proxyctl/controller.yaml
+Restart=on-failure
+RestartSec=3
+AmbientCapabilities=
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/proxyctl /etc/proxyctl /var/lib/proxyctl/certs
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

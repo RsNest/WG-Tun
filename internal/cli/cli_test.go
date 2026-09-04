@@ -1,0 +1,50 @@
+package cli
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestApplyEnvReadsTokenFileAndInsecure(t *testing.T) {
+	dir := t.TempDir()
+	tok := filepath.Join(dir, "bootstrap.token")
+	if err := os.WriteFile(tok, []byte("secret-token\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PROXYCTL_CONTROLLER", "https://controller:8443")
+	t.Setenv("PROXYCTL_TOKEN_FILE", tok)
+	t.Setenv("PROXYCTL_TOKEN", "")
+	t.Setenv("PROXYCTL_INSECURE", "true")
+	opt, err := applyEnv(Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opt.Controller != "https://controller:8443" {
+		t.Fatalf("controller %q", opt.Controller)
+	}
+	if opt.Token != "secret-token" {
+		t.Fatalf("token %q", opt.Token)
+	}
+	if !opt.Insecure {
+		t.Fatal("expected insecure from env")
+	}
+}
+
+func TestApplyEnvFlagsWinOverEnv(t *testing.T) {
+	t.Setenv("PROXYCTL_CONTROLLER", "https://from-env:8443")
+	t.Setenv("PROXYCTL_INSECURE", "false")
+	opt, err := applyEnv(Options{Controller: "https://from-flag:8443", Insecure: true, Token: "flag-token"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opt.Controller != "https://from-flag:8443" {
+		t.Fatalf("controller %q", opt.Controller)
+	}
+	if opt.Token != "flag-token" {
+		t.Fatalf("token %q", opt.Token)
+	}
+	if !opt.Insecure {
+		t.Fatal("flag --insecure must stick")
+	}
+}

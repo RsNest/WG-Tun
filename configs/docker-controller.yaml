@@ -1,0 +1,17 @@
+listen: "0.0.0.0:8443"
+data_dir: "/data"
+tls:
+  required: true
+  cert_file: "/data/certs/server.crt"
+  key_file: "/data/certs/server.key"
+  auto_self_signed: true
+  dns_names:
+    - controller
+    - localhost
+auth:
+  bootstrap_token_file: "/data/bootstrap.token"
+  hmac_required: true
+  max_skew: 5m
+rate_limit:
+  mutating_rps: 10
+  burst: 20

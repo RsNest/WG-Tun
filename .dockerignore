@@ -1,0 +1,17 @@
+# build
+.git
+.gitignore
+bin/
+data/
+certs/
+*.exe
+*.db
+*.db-wal
+*.db-shm
+coverage.out
+**/.DS_Store
+README.md
+docs/
+deploy/prometheus/
+deploy/systemd/
+scripts/install.sh

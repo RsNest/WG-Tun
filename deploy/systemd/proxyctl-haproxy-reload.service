@@ -1,0 +1,17 @@
+[Unit]
+Description=Validate and reload host HAProxy after a proxyctl config write
+After=haproxy.service
+# No Requires=/Wants= on haproxy: a down unit must not swallow the oneshot
+# (we still validate, restore last-good, and log). No docker/network deps.
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/proxyctl/haproxy-reload-on-change.sh
+WorkingDirectory=/etc/haproxy
+TimeoutStartSec=120
+SyslogIdentifier=proxyctl-haproxy-reload
+StandardOutput=journal
+StandardError=journal
+Nice=5
+PrivateTmp=yes
+ProtectHome=yes

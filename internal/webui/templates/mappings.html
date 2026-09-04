@@ -1,0 +1,75 @@
+{{define "mappings"}}
+{{template "header" .}}
+<h1>Port mappings</h1>
+<p class="lead">Public port on a node forwarded to an xray inbound (or other service) on a backend overlay address.</p>
+{{template "mappings-table" .}}
+
+{{if .CanWrite}}
+<div class="panel">
+  <h2>Create mapping</h2>
+  <form method="post" action="/mappings" class="form-grid">
+    <label>Node
+      <select name="node_id" required>
+        {{range .Data.Nodes}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+      </select>
+    </label>
+    <label>Backend
+      <select name="backend_id" required>
+        {{range .Data.Backends}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+      </select>
+    </label>
+    <label>Protocol
+      <select name="protocol">
+        <option>TCP</option>
+        <option>UDP</option>
+      </select>
+    </label>
+    <label>Public port <input name="public_port" type="number" required></label>
+    <label>Backend port <input name="backend_port" type="number" required></label>
+    <div class="wide"><button type="submit">Create</button></div>
+  </form>
+</div>
+{{end}}
+{{template "footer" .}}
+{{end}}
+
+{{define "mappings-table"}}
+{{$cat := .Data.Catalog}}
+{{$can := .CanWrite}}
+<div id="mappings-table" class="panel">
+  {{if not .Data.Mappings}}<p class="empty">No mappings.</p>{{else}}
+  <table>
+    <thead><tr><th>Node</th><th>Proto</th><th>Public</th><th>Backend</th><th>Backend port</th><th>Enabled</th>{{if $can}}<th></th>{{end}}</tr></thead>
+    <tbody>
+    {{range .Data.Mappings}}
+      <tr>
+        <td>{{$cat.NodeName .NodeID}}</td>
+        <td>{{.Protocol}}</td>
+        <td class="mono">{{.PublicPort}}</td>
+        <td>{{$cat.BackendName .BackendID}}</td>
+        <td class="mono">{{.BackendPort}}</td>
+        <td>
+          {{if $can}}
+            {{if .Enabled}}
+              <button class="toggle on" title="Disable" hx-patch="/mappings/{{.ID}}" hx-vals='{"enabled":"false"}' hx-target="#mappings-table" hx-select="#mappings-table" hx-swap="outerHTML"></button>
+            {{else}}
+              <button class="toggle" title="Enable" hx-patch="/mappings/{{.ID}}" hx-vals='{"enabled":"true"}' hx-target="#mappings-table" hx-select="#mappings-table" hx-swap="outerHTML"></button>
+            {{end}}
+          {{else}}
+            {{if .Enabled}}yes{{else}}no{{end}}
+          {{end}}
+        </td>
+        {{if $can}}
+        <td>
+          <form class="inline-form" method="post" action="/mappings/{{.ID}}/delete" hx-confirm="Delete this mapping?">
+            <button class="danger" type="submit">Delete</button>
+          </form>
+        </td>
+        {{end}}
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
+</div>
+{{end}}

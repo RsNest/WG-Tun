@@ -1,0 +1,30 @@
+{{define "dashboard"}}
+{{template "header" .}}
+<h1>Dashboard</h1>
+<p class="lead">RU-side edge nodes. Status refreshes every 8 seconds.</p>
+{{template "dashboard-cards" .}}
+{{template "footer" .}}
+{{end}}
+
+{{define "dashboard-cards"}}
+<div id="node-cards" class="cards" hx-get="/" hx-trigger="every 8s" hx-select="#node-cards" hx-target="this" hx-swap="outerHTML">
+  {{if not .Data}}
+    <div class="panel empty">No nodes yet. Create one with <code>proxctl node add</code>.</div>
+  {{else}}
+    {{range .Data}}
+    <article class="card">
+      <h2><a href="/nodes/{{.ID}}">{{.Name}}</a></h2>
+      <div class="ip">{{.PublicIP}}</div>
+      <span class="badge {{.StatusClass}}">{{.Status}}</span>
+      <dl class="meta" style="margin-top:12px">
+        <dt>Transport</dt><dd class="transport">{{.Transport}}</dd>
+        <dt>Handshake</dt><dd>{{.Handshake}}</dd>
+        <dt>Heartbeat</dt><dd>{{.Heartbeat}}</dd>
+        <dt>Reconcile</dt><dd>{{.LastReconcile}}</dd>
+        <dt>Mappings</dt><dd>{{.MappingCount}} active</dd>
+      </dl>
+    </article>
+    {{end}}
+  {{end}}
+</div>
+{{end}}

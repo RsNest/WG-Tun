@@ -1,0 +1,77 @@
+{{define "sni"}}
+{{template "header" .}}
+<h1>SNI routes</h1>
+<p class="lead">TLS hostname on a node listen address (usually :443) mapped to a backend. One default backend per listen.</p>
+
+<div class="panel">
+  {{if not .Data.Rows}}<p class="empty">No SNI routes.</p>{{else}}
+  <table>
+    <thead><tr><th>Node</th><th>Listen</th><th>Match</th><th>Backend</th><th>Priority</th>{{if .CanWrite}}<th></th>{{end}}</tr></thead>
+    <tbody>
+    {{range .Data.Rows}}
+      <tr>
+        <td>{{.Node}}</td>
+        <td class="mono">{{.Listen}}</td>
+        <td class="mono">{{.Match}}</td>
+        <td>{{.Backend}}</td>
+        <td>{{.Priority}}</td>
+        {{if $.CanWrite}}<td><a href="/sni-routes/{{.ID}}">Edit</a></td>{{end}}
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
+</div>
+
+{{if .CanWrite}}
+<div class="panel">
+  <h2>Create SNI route</h2>
+  <form method="post" action="/sni-routes" class="form-grid">
+    <label>Node
+      <select name="node_id" required>
+        {{range .Data.Nodes}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+      </select>
+    </label>
+    <label>Listen <input name="listen" value=":443" required></label>
+    <label>Default backend
+      <select name="default_backend" required>
+        {{range .Data.Backends}}<option value="{{.Name}}">{{.Name}}</option>{{end}}
+      </select>
+    </label>
+    <label class="wide">Extra hostname matches (one per line: <code>hostname backend-name</code>)
+      <textarea name="matches" placeholder="app.example.com backend-a"></textarea>
+    </label>
+    <div class="wide"><button type="submit">Create</button></div>
+  </form>
+</div>
+{{end}}
+{{template "footer" .}}
+{{end}}
+
+{{define "sni_detail"}}
+{{template "header" .}}
+{{$r := .Data.Route}}
+<h1>Edit SNI route</h1>
+<form method="post" action="/sni-routes/{{$r.ID}}" class="form-grid panel">
+  <label>Node
+    <select name="node_id" required>
+      {{range .Data.Nodes}}
+        <option value="{{.ID}}" {{if eq .ID $r.NodeID}}selected{{end}}>{{.Name}}</option>
+      {{end}}
+    </select>
+  </label>
+  <label>Listen <input name="listen" required value="{{$r.Listen}}"></label>
+  <label>Default backend
+    <select name="default_backend" required>
+      {{range .Data.Backends}}
+        <option value="{{.Name}}" {{if eq .Name $.Data.DefaultBackend}}selected{{end}}>{{.Name}}</option>
+      {{end}}
+    </select>
+  </label>
+  <label class="wide">Extra hostname matches
+    <textarea name="matches">{{.Data.ExtraMatches}}</textarea>
+  </label>
+  <div class="wide"><button type="submit">Save</button></div>
+</form>
+{{template "footer" .}}
+{{end}}

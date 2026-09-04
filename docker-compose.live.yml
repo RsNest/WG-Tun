@@ -1,0 +1,44 @@
+# Linux Docker Engine only. Do not use on Docker Desktop for Windows.
+# Gate: sudo bash scripts/run-smoke-tests.sh && sudo bash scripts/enable-live-overlay.sh
+# Do not `compose up` this overlay until smoke tests passed and an agent-role
+# token exists at /etc/proxyctl/agent.token.
+#
+# The live agent MUST share the host network namespace. NET_ADMIN / privileged
+# only grant permission to mutate *this* netns — without network_mode: host
+# iptables/WG apply inside the container and never touch the public NIC.
+#
+# HAProxy: the agent writes /etc/haproxy (bind-mounted) and runs `haproxy -c`.
+# It does not call systemctl. Enable the host path unit first:
+#   sudo install -m 0755 scripts/haproxy-reload-on-change.sh /usr/local/lib/proxyctl/haproxy-reload-on-change.sh
+#   sudo install -m 0644 deploy/systemd/proxyctl-haproxy-reload.{path,service} /etc/systemd/system/
+#   sudo systemctl enable --now proxyctl-haproxy-reload.path
+#
+# Prefer a systemd agent on production edges; this overlay is for Linux lab hosts.
+#
+# depends_on (controller healthy, bootstrap completed) is inherited from
+# docker-compose.yml — this file does not !reset those keys.
+#
+# Prometheus stays on the Compose bridge. It cannot resolve "agent" once the
+# agent is in the host netns; scrape via extra_hosts + prometheus.live.yml.
+services:
+  agent:
+    network_mode: host
+    hostname: !reset null
+    ports: !reset []
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    devices:
+      - /dev/net/tun
+    volumes: !override
+      - proxyctl-data:/data:ro
+      - ./configs/docker-agent.live.yaml:/etc/proxyctl/agent.yaml:ro
+      - /etc/proxyctl/agent.token:/etc/proxyctl/agent.token:ro
+      - /etc/haproxy:/etc/haproxy
+
+  prometheus:
+    extra_hosts:
+      - "agent-host:host-gateway"
+    volumes: !override
+      - ./prometheus.live.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro

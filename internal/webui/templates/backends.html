@@ -1,0 +1,85 @@
+{{define "backends"}}
+{{template "header" .}}
+{{$cat := .Data.Catalog}}
+<h1>Backends</h1>
+<p class="lead">Foreign boxes (typically xray) reached over overlay from a node. Address is the overlay IPv4, not a public IP.</p>
+
+<div class="panel">
+  {{if not .Data.Backends}}<p class="empty">No backends.</p>{{else}}
+  <table>
+    <thead><tr><th>Name</th><th>Node</th><th>Overlay address</th></tr></thead>
+    <tbody>
+    {{range .Data.Backends}}
+      <tr>
+        <td><a href="/backends/{{.ID}}">{{.Name}}</a></td>
+        <td>{{$cat.NodeName .NodeID}}</td>
+        <td class="mono">{{.Address}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
+</div>
+
+{{if .CanWrite}}
+<div class="panel">
+  <h2>Create backend</h2>
+  <form method="post" action="/backends" class="form-grid">
+    <label>Name <input name="name" required placeholder="backend-a"></label>
+    <label>Node
+      <select name="node_id" required>
+        {{range .Data.Nodes}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+      </select>
+    </label>
+    <label>Overlay address <input name="address" required placeholder="10.200.1.2"></label>
+    <div class="wide"><button type="submit">Create</button></div>
+  </form>
+</div>
+{{end}}
+{{template "footer" .}}
+{{end}}
+
+{{define "backend_detail"}}
+{{template "header" .}}
+{{$b := .Data.Backend}}
+{{$cat := .Data.Catalog}}
+<h1>{{$b.Name}}</h1>
+<p class="lead">Overlay {{$b.Address}} · node {{$cat.NodeName $b.NodeID}}</p>
+
+{{if .CanWrite}}
+<div class="panel">
+  <h2>Edit</h2>
+  <form method="post" action="/backends/{{$b.ID}}" class="form-grid">
+    <label>Name <input name="name" required value="{{$b.Name}}"></label>
+    <label>Node
+      <select name="node_id" required>
+        {{range .Data.Nodes}}
+          <option value="{{.ID}}" {{if eq .ID $b.NodeID}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+    </label>
+    <label>Overlay address <input name="address" required value="{{$b.Address}}"></label>
+    <div class="wide"><button type="submit">Save</button></div>
+  </form>
+</div>
+{{end}}
+
+<div class="panel">
+  <h2>Tunnels pointing here</h2>
+  {{if not .Data.Tunnels}}<p class="empty">None.</p>{{else}}
+  <table>
+    <thead><tr><th>Type</th><th>Node</th><th>Interface</th></tr></thead>
+    <tbody>
+    {{range .Data.Tunnels}}
+      <tr>
+        <td class="mono">{{.Type}}</td>
+        <td>{{$cat.NodeName .NodeID}}</td>
+        <td class="mono">{{.InterfaceName}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
+</div>
+{{template "footer" .}}
+{{end}}

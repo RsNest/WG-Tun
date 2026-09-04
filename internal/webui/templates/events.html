@@ -1,0 +1,49 @@
+{{define "events"}}
+{{template "header" .}}
+{{$f := .Data.Filter}}
+<h1>Events</h1>
+<p class="lead">Audit log from the controller API. Filters are query parameters — bookmarkable, no client state.</p>
+
+<form class="filter" method="get" action="/events">
+  <label>Node
+    <select name="node">
+      <option value="">any</option>
+      {{range .Data.Nodes}}
+        <option value="{{.Name}}" {{if eq $.Data.Filter.Node .Name}}selected{{end}}>{{.Name}}</option>
+      {{end}}
+    </select>
+  </label>
+  <label>Backend
+    <select name="backend">
+      <option value="">any</option>
+      {{range .Data.Backends}}
+        <option value="{{.Name}}" {{if eq $.Data.Filter.Backend .Name}}selected{{end}}>{{.Name}}</option>
+      {{end}}
+    </select>
+  </label>
+  <label>From <input type="date" name="from" value="{{$f.From}}"></label>
+  <label>To <input type="date" name="to" value="{{$f.To}}"></label>
+  <button type="submit">Filter</button>
+  <a class="btn secondary" href="/events">Reset</a>
+</form>
+
+<div class="panel">
+  {{if not .Data.Events}}<p class="empty">No events.</p>{{else}}
+  <table>
+    <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Result</th></tr></thead>
+    <tbody>
+    {{range .Data.Events}}
+      <tr>
+        <td class="mono">{{.Timestamp.UTC.Format "2006-01-02 15:04:05"}}</td>
+        <td>{{.Actor}}</td>
+        <td class="mono">{{.Action}}</td>
+        <td class="mono">{{.Resource}} {{.ResourceID}}</td>
+        <td>{{if .Success}}<span class="ok-dot">ok</span>{{else}}<span class="bad-dot">error</span>{{end}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
+</div>
+{{template "footer" .}}
+{{end}}

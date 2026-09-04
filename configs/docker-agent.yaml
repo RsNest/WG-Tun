@@ -1,0 +1,10 @@
+node_name: ru-edge-1
+controller_url: https://controller:8443
+token_file: /data/bootstrap.token
+reconcile_interval: 10s
+dry_run_only: true
+state_dir: /run/proxyctl
+haproxy_config: /etc/haproxy/haproxy.cfg
+tls:
+  insecure_skip_verify: true
+metrics_listen: "0.0.0.0:9101"

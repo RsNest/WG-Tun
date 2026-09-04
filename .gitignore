@@ -1,0 +1,23 @@
+/data/
+/certs/
+/bin/
+*.exe
+*.db
+*.db-wal
+*.db-shm
+coverage.out
+
+# Secrets and local credentials
+.env
+.env.*
+*.token
+*.pem
+*.key
+id_rsa
+id_ed25519
+
+# Editor / OS junk
+.DS_Store
+*.swp
+*~
+Thumbs.db

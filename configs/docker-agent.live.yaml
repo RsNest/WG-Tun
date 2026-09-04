@@ -1,0 +1,18 @@
+# Linux Docker Engine + host network. Controller is reached on the host loopback
+# (Compose DNS name "controller" is not in the host netns).
+# metrics_listen must be 0.0.0.0:9101 so Prometheus on the bridge can scrape
+# via extra_hosts agent-host:host-gateway (prometheus.live.yml).
+#
+# Start via scripts/enable-live-overlay.sh after smoke tests. dry_run_only
+# must stay true until a human reviews the plan and edits this file.
+node_name: ru-edge-1
+controller_url: https://127.0.0.1:8443
+token_file: /etc/proxyctl/agent.token
+reconcile_interval: 10s
+dry_run_only: true
+state_dir: /run/proxyctl
+haproxy_config: /etc/haproxy/haproxy.cfg
+haproxy_reload: external
+tls:
+  insecure_skip_verify: true
+metrics_listen: "0.0.0.0:9101"

@@ -1,0 +1,16 @@
+[Unit]
+Description=proxyctl edge agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/proxyctl-agent --config /etc/proxyctl/agent.yaml
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
