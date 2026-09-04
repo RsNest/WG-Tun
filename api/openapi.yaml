@@ -7,7 +7,8 @@ info:
     Authentication: Bearer token plus HMAC-SHA256 over
     `timestamp + method + path + sha256(body)` using the bearer token as key.
     Headers: `Authorization: Bearer <token>`, `X-Proxyctl-Timestamp`, `X-Proxyctl-Signature`.
-    Roles: operator (mutate+read), readonly (read), agent (mutate+read).
+    Roles: operator (mutate+read), readonly (read), agent (mutate+read), administrator (human UI; mutate+read+users).
+    Human users: GET/POST /api/v1/users* (administrator, or self for TOTP/locale/password).
     Canonical contract: docs/ARCHITECTURE.md. This file must stay synchronized with it.
 servers:
   - url: https://127.0.0.1:8443
@@ -331,7 +332,7 @@ paths:
       security: [{bearerAuth: []}]
       responses:
         "200":
-          description: token metadata (operator only; hashes omitted)
+          description: token metadata (administrator or operator; hashes omitted)
     post:
       security: [{bearerAuth: []}]
       requestBody:
@@ -348,7 +349,98 @@ paths:
         "201":
           description: minted token (plaintext returned once)
         "403":
-          description: caller is not operator
+          description: caller is not administrator or operator
+  /api/v1/users:
+    get:
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: human users (administrator; secrets omitted)
+        "403":
+          description: caller is not administrator
+    post:
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password, role]
+              properties:
+                username: {type: string}
+                display_name: {type: string}
+                password: {type: string}
+                role: {type: string, enum: [administrator, operator, readonly]}
+                locale: {type: string, enum: [en, ru]}
+      responses:
+        "201":
+          description: created human user
+  /api/v1/users/{id}:
+    get:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: human user (administrator or self)
+    patch:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: updated human user
+  /api/v1/users/{id}/totp/begin:
+    post:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: otpauth URL and secret (once)
+  /api/v1/users/{id}/totp/confirm:
+    post:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: TOTP enabled; recovery codes returned once
+  /api/v1/users/{id}/totp/disable:
+    post:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: TOTP disabled
+  /api/v1/users/{id}/recovery-codes:
+    post:
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: new recovery codes returned once
 components:
   securitySchemes:
     bearerAuth:

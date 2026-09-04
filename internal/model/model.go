@@ -194,13 +194,14 @@ type AuditEvent struct {
 	Success    bool      `json:"success"`
 }
 
-// Role is a coarse RBAC role stored on API tokens.
+// Role is a coarse RBAC role stored on API tokens or human users.
 type Role string
 
 const (
-	RoleOperator Role = "operator"
-	RoleReadonly Role = "readonly"
-	RoleAgent    Role = "agent"
+	RoleAdministrator Role = "administrator"
+	RoleOperator      Role = "operator"
+	RoleReadonly      Role = "readonly"
+	RoleAgent         Role = "agent"
 )
 
 func ParseRole(s string) (Role, error) {
@@ -216,7 +217,21 @@ func ParseRole(s string) (Role, error) {
 	}
 }
 
-// TokenCreateRequest is the operator-only mint payload.
+// ParseHumanRole is for Web UI accounts. Agent is not a human login role.
+func ParseHumanRole(s string) (Role, error) {
+	switch Role(strings.ToLower(strings.TrimSpace(s))) {
+	case RoleAdministrator:
+		return RoleAdministrator, nil
+	case RoleOperator:
+		return RoleOperator, nil
+	case RoleReadonly:
+		return RoleReadonly, nil
+	default:
+		return "", Validation("role must be administrator, operator, or readonly")
+	}
+}
+
+// TokenCreateRequest is the administrator/operator mint payload.
 type TokenCreateRequest struct {
 	Name string `json:"name"`
 	Role Role   `json:"role"`
@@ -235,6 +250,52 @@ type TokenCreateResult struct {
 type PrincipalView struct {
 	Name string `json:"name"`
 	Role Role   `json:"role"`
+}
+
+// User is a human Web UI account. Password hashes and TOTP secrets are never JSON-serialized.
+type User struct {
+	ID           ID        `json:"id"`
+	Username     string    `json:"username"`
+	DisplayName  string    `json:"display_name,omitempty"`
+	PasswordHash string    `json:"-"`
+	Role         Role      `json:"role"`
+	Locale       string    `json:"locale"`
+	TOTPSecret   string    `json:"-"`
+	TOTPPending  string    `json:"-"`
+	TOTPEnabled  bool      `json:"totp_enabled"`
+	Disabled     bool      `json:"disabled"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	LastLoginAt  time.Time `json:"last_login_at,omitempty"`
+}
+
+// UserCreateRequest is the administrator payload to add a human user.
+type UserCreateRequest struct {
+	Username    string `json:"username"`
+	DisplayName string `json:"display_name,omitempty"`
+	Password    string `json:"password"`
+	Role        Role   `json:"role"`
+	Locale      string `json:"locale,omitempty"`
+}
+
+// UserPatch updates mutable human-user fields. Omitted fields stay unchanged.
+type UserPatch struct {
+	DisplayName *string `json:"display_name,omitempty"`
+	Password    *string `json:"password,omitempty"`
+	Role        *Role   `json:"role,omitempty"`
+	Locale      *string `json:"locale,omitempty"`
+	Disabled    *bool   `json:"disabled,omitempty"`
+}
+
+// TOTPBeginResult is returned once during enrollment. The secret is not stored in audit.
+type TOTPBeginResult struct {
+	OTPAuthURL string `json:"otpauth_url"`
+	Secret     string `json:"secret"`
+}
+
+// RecoveryCodesResult returns newly generated codes once.
+type RecoveryCodesResult struct {
+	Codes []string `json:"codes"`
 }
 
 // Token is the DB row for a hashed credential. The plaintext is never stored.

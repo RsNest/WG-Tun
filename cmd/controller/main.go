@@ -96,7 +96,14 @@ func run() error {
 	defer stop()
 
 	if strings.TrimSpace(*uiListen) != "" {
-		ui, err := webui.New(webui.Config{Listen: *uiListen, API: srv.Handler(), Log: log, LiveApply: cap.LiveApply})
+		ui, err := webui.New(webui.Config{
+			Listen:    *uiListen,
+			API:       srv.Handler(),
+			Auth:      a,
+			Accounts:  auth.NewAccounts(st),
+			Log:       log,
+			LiveApply: cap.LiveApply,
+		})
 		if err != nil {
 			return fmt.Errorf("web ui: %w", err)
 		}

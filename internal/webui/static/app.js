@@ -5,6 +5,10 @@
   function hxError() {
     return document.getElementById("hx-error");
   }
+  function msg(name, fallback) {
+    var v = document.body && document.body.getAttribute("data-i18n-" + name);
+    return v || fallback;
+  }
   function show(el, text) {
     if (!el) return;
     if (text) el.textContent = text;
@@ -19,26 +23,26 @@
   }
   document.body.addEventListener("htmx:sendError", function (ev) {
     if (isDashCards(ev.detail && ev.detail.elt)) {
-      show(banner(), "Could not refresh node status. Showing last successful data.");
+      show(banner(), msg("refresh-fail", "Could not refresh node status. Showing last successful data."));
       return;
     }
-    show(hxError(), "The controller did not respond.");
+    show(hxError(), msg("no-response", "The controller did not respond."));
   });
   document.body.addEventListener("htmx:responseError", function (ev) {
     var xhr = ev.detail && ev.detail.xhr;
     var status = xhr ? xhr.status : 0;
     if (isDashCards(ev.detail && ev.detail.elt)) {
-      show(banner(), "Could not refresh node status. Showing last successful data.");
+      show(banner(), msg("refresh-fail", "Could not refresh node status. Showing last successful data."));
       return;
     }
-    var msg = "Request failed.";
-    if (status === 401) msg = "Session expired. Sign in again.";
-    else if (status === 403) msg = "This action requires the operator role.";
-    else if (status === 404) msg = "The requested resource was not found.";
-    else if (status === 409) msg = "The controller reported a conflict.";
-    else if (status === 422 || status === 400) msg = "The submitted values were not accepted.";
-    else if (status >= 500) msg = "The controller could not complete this request.";
-    show(hxError(), msg);
+    var text = msg("request-failed", "Request failed.");
+    if (status === 401) text = msg("session", "Session expired. Sign in again.");
+    else if (status === 403) text = msg("forbidden", "This action requires the operator role.");
+    else if (status === 404) text = msg("not-found", "The requested resource was not found.");
+    else if (status === 409) text = msg("conflict", "The controller reported a conflict.");
+    else if (status === 422 || status === 400) text = msg("validation", "The submitted values were not accepted.");
+    else if (status >= 500) text = msg("controller", "The controller could not complete this request.");
+    show(hxError(), text);
   });
   document.body.addEventListener("htmx:afterSwap", function (ev) {
     if (isDashCards(ev.detail && ev.detail.target)) hide(banner());

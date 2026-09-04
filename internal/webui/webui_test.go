@@ -7,11 +7,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
+	"proxyctl/internal/auth"
 	"proxyctl/internal/model"
+	"proxyctl/internal/store"
 )
 
 type fakeAPI struct {
@@ -163,6 +168,7 @@ func (f *fakeAPI) ListEvents(_ context.Context, query string) ([]model.AuditEven
 	f.lastEventsQuery = query
 	return f.audit, nil
 }
+func (f *fakeAPI) ListTokens(context.Context) ([]model.Token, error) { return nil, nil }
 
 func sampleFake() *fakeAPI {
 	now := time.Date(2026, 9, 4, 11, 59, 50, 0, time.UTC)
@@ -218,7 +224,7 @@ func testUI(t *testing.T, fake *fakeAPI) *Server {
 
 func sessionCookie(t *testing.T, s *Server, name string, role model.Role, token string) *http.Cookie {
 	t.Helper()
-	sess, err := s.sessions.put(token, name, role)
+	sess, err := s.sessions.put(session{Token: token, Name: name, Role: role, Locale: "en"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +278,7 @@ func TestRenderPages(t *testing.T) {
 	fake := sampleFake()
 	s := testUI(t, fake)
 	cookie := sessionCookie(t, s, "operator", model.RoleOperator, "sekrit-token-value")
-	pages := []string{"/", "/nodes", "/nodes/n1", "/backends", "/backends/b1", "/tunnels", "/mappings", "/sni-routes", "/sni-routes/s1", "/events"}
+	pages := []string{"/", "/nodes", "/nodes/n1", "/backends", "/backends/b1", "/tunnels", "/mappings", "/sni-routes", "/sni-routes/s1", "/events", "/settings", "/api-reference"}
 	for _, path := range pages {
 		rec := do(t, s, http.MethodGet, path, cookie, nil)
 		if rec.Code != 200 {
@@ -754,5 +760,96 @@ func TestTunnelFormUsesKeyPathOnly(t *testing.T) {
 	}
 	if strings.Contains(body, `name="private_key"`) {
 		t.Fatal("tunnel form must not accept raw private key material")
+	}
+}
+
+func TestFirstAdminSetupPasswordLoginAndAPIReference(t *testing.T) {
+	st, err := store.OpenSQLite(filepath.Join(t.TempDir(), "ui.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	acc := auth.NewAccounts(st).WithCost(bcrypt.MinCost)
+	fake := sampleFake()
+	s, err := New(Config{
+		NewClient: func(string) API { return fake },
+		Accounts:  acc,
+		Now:       func() time.Time { return time.Date(2026, 9, 4, 12, 0, 0, 0, time.UTC) },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := do(t, s, http.MethodGet, "/", nil, nil)
+	if rec.Code != http.StatusSeeOther || !strings.Contains(rec.Header().Get("Location"), "/setup") {
+		t.Fatalf("empty users should setup: %d %s", rec.Code, rec.Header().Get("Location"))
+	}
+	rec = do(t, s, http.MethodPost, "/setup", nil, url.Values{
+		"username":         {"rootadmin"},
+		"display_name":     {"Root"},
+		"password":         {"correct-horse"},
+		"password_confirm": {"correct-horse"},
+	})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("setup %d %s", rec.Code, rec.Body.String())
+	}
+	cs := rec.Result().Cookies()
+	if len(cs) == 0 {
+		t.Fatal("setup session cookie")
+	}
+	var sess *http.Cookie
+	for _, c := range cs {
+		if c.Name == cookieName {
+			sess = c
+		}
+	}
+	if sess == nil {
+		t.Fatal("missing ui cookie")
+	}
+	home := do(t, s, http.MethodGet, "/", sess, nil)
+	if home.Code != 200 || !strings.Contains(home.Body.String(), "nav.group.overview") && !strings.Contains(home.Body.String(), "Overview") {
+		t.Fatalf("admin home %d", home.Code)
+	}
+	if !strings.Contains(home.Body.String(), `href="/users"`) {
+		t.Fatal("administrator should see users nav")
+	}
+	users := do(t, s, http.MethodGet, "/users", sess, nil)
+	if users.Code != 200 {
+		t.Fatalf("users %d %s", users.Code, users.Body.String())
+	}
+	ref := do(t, s, http.MethodGet, "/api-reference", sess, nil)
+	if ref.Code != 200 || !strings.Contains(ref.Body.String(), "/api/v1/users") || !strings.Contains(ref.Body.String(), "/api/v1/nodes") {
+		t.Fatalf("api reference missing paths: %s", ref.Body.String())
+	}
+	s.clearSessionCookie(httptest.NewRecorder())
+	s.sessions.delete(s.sessions.verify(sess.Value))
+	login := do(t, s, http.MethodPost, "/login", nil, url.Values{
+		"username": {"rootadmin"},
+		"password": {"correct-horse"},
+	})
+	if login.Code != http.StatusSeeOther {
+		t.Fatalf("password login %d", login.Code)
+	}
+}
+
+func TestOperatorCannotOpenUsersPage(t *testing.T) {
+	s := testUI(t, sampleFake())
+	cookie := sessionCookie(t, s, "operator", model.RoleOperator, "tok")
+	rec := do(t, s, http.MethodGet, "/users", cookie, nil)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", rec.Code)
+	}
+}
+
+func TestLoginRespectsLocaleCookie(t *testing.T) {
+	s := testUI(t, sampleFake())
+	req := httptest.NewRequest(http.MethodGet, "/login", nil)
+	req.AddCookie(&http.Cookie{Name: localeCookie, Value: "ru"})
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("%d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "Вход") {
+		t.Fatalf("expected Russian login chrome, got %s", rec.Body.String())
 	}
 }

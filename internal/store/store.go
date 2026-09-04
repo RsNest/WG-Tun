@@ -62,12 +62,31 @@ type Store interface {
 	ListTokens(ctx context.Context) ([]model.Token, error)
 	HasTokenName(ctx context.Context, name string) (bool, error)
 
+	CreateUser(ctx context.Context, u *model.User) error
+	GetUser(ctx context.Context, id model.ID) (*model.User, error)
+	GetUserByUsername(ctx context.Context, username string) (*model.User, error)
+	ListUsers(ctx context.Context) ([]model.User, error)
+	CountUsers(ctx context.Context) (int, error)
+	CountAdministrators(ctx context.Context) (int, error)
+	UpdateUser(ctx context.Context, u *model.User) error
+	ReplaceRecoveryCodes(ctx context.Context, userID model.ID, hashes []string) error
+	ListRecoveryCodeHashes(ctx context.Context, userID model.ID) ([]RecoveryCode, error)
+	MarkRecoveryCodeUsed(ctx context.Context, id model.ID, usedAt time.Time) error
+
 	AppendAudit(ctx context.Context, e *model.AuditEvent) error
 	ListAudit(ctx context.Context, limit int) ([]model.AuditEvent, error)
 
 	CreateFailbackIntent(ctx context.Context, in *model.FailbackIntent) error
 	ListFailbackIntents(ctx context.Context, nodeID model.ID) ([]model.FailbackIntent, error)
 	DeleteFailbackIntent(ctx context.Context, id model.ID) error
+}
+
+// RecoveryCode is a hashed one-time MFA fallback code.
+type RecoveryCode struct {
+	ID     model.ID
+	UserID model.ID
+	Hash   string
+	UsedAt time.Time
 }
 
 var ErrNotFound = errors.New("not found")

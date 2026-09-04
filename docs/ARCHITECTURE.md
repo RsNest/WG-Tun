@@ -2,6 +2,7 @@
 
 `docs/ARCHITECTURE.md` is the canonical architectural contract for this repository.
 `api/openapi.yaml` is the machine-readable API specification and MUST stay synchronized with it.
+`docs/ROADMAP.md` is a planning document. It is not the implemented contract until a section is approved and landed here.
 
 Any new or changed HTTP endpoint must update, in the same change:
 
@@ -43,7 +44,7 @@ Plans are `ADD:` / `CHANGE:` / `DELETE:` lines. Applying an unchanged desired st
 
 | | `GET .../plan` | `POST .../apply` with `{"dry_run": true}` |
 | --- | --- | --- |
-| Role | read (readonly, operator, agent) | write (operator, agent) |
+| Role | read (readonly, operator, administrator, agent) | write (operator, administrator, agent) |
 | Mutates inventory | no | no |
 | Audit | none | `apply-dry-run` |
 | Purpose | pure plan preview | explicit audited dry-run request |
@@ -80,7 +81,11 @@ Externally the operation is **Failback**: the explicit human-triggered transitio
 
 Authentication: Bearer token plus HMAC-SHA256 over `timestamp + method + path + sha256(body)` using the bearer token as key.
 
+The optional Web UI also authenticates in-process API calls for **human sessions** (username/password, optional TOTP) using loopback HMAC headers signed with a process-local UI secret. External clients cannot forge those headers.
+
 RBAC is enforced on the REST API. The optional Web UI adds a second session gate (cookie) in front of the same API.
+
+Human Web UI roles: `administrator`, `operator`, `readonly`. API token roles remain `operator`, `readonly`, `agent`. `administrator` is not an API token role.
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
@@ -88,8 +93,16 @@ RBAC is enforced on the REST API. The optional Web UI adds a second session gate
 | GET | `/readyz` | none | SQLite reachable and server initialized |
 | GET | `/metrics` | none | Prometheus exposition (501 if metrics disabled) |
 | GET | `/api/v1/whoami` | read | caller name and role |
-| GET | `/api/v1/tokens` | operator | token metadata (hashes omitted) |
-| POST | `/api/v1/tokens` | operator | mint a token (plaintext returned once) |
+| GET | `/api/v1/tokens` | administrator or operator | token metadata (hashes omitted) |
+| POST | `/api/v1/tokens` | administrator or operator | mint a token (plaintext returned once) |
+| GET | `/api/v1/users` | administrator | list human users |
+| POST | `/api/v1/users` | administrator | create a human user |
+| GET | `/api/v1/users/{id}` | administrator or self | get a human user |
+| PATCH | `/api/v1/users/{id}` | administrator or self | update user; self may change locale/password; administrator may change role/disabled |
+| POST | `/api/v1/users/{id}/totp/begin` | administrator or self | start TOTP enrollment |
+| POST | `/api/v1/users/{id}/totp/confirm` | administrator or self | confirm TOTP; recovery codes returned once |
+| POST | `/api/v1/users/{id}/totp/disable` | administrator or self | disable TOTP |
+| POST | `/api/v1/users/{id}/recovery-codes` | administrator or self | replace recovery codes (returned once) |
 | GET | `/api/v1/nodes` | read | list nodes |
 | POST | `/api/v1/nodes` | write | create node |
 | GET | `/api/v1/nodes/{id}` | read | get node |
@@ -116,7 +129,7 @@ RBAC is enforced on the REST API. The optional Web UI adds a second session gate
 | PATCH | `/api/v1/sni-routes/{id}` | write | update SNI route |
 | GET | `/api/v1/events` | read | audit log; query `node`, `backend`, `since`, `until`, `action` |
 
-**Read** = `readonly`, `operator`, `agent`. **Write** = `operator`, `agent`. Token mint/list = `operator` only.
+**Read** = `readonly`, `operator`, `administrator`, `agent`. **Write** = `operator`, `administrator`, `agent`. Token mint/list = `administrator` or `operator`. Human user CRUD = `administrator` (self-service locale/password/TOTP for the signed-in user).
 
 Agent tokens are not accepted as Web UI logins. Agent APIs remain the same node-unbound REST surface as today except where a handler already scopes by path `{id}`; do not treat agent as a general operator.
 
@@ -157,15 +170,28 @@ The operator console is compiled into `proxyctl-controller` (`internal/webui`) a
 
 Why a second listener: the API mux is Bearer + HMAC. Cookie sessions and HTML forms do not belong on that surface. A localhost HTTP UI avoids mixing `Set-Cookie` with the existing TLS authenticator and needs no change to agent clients.
 
-The UI does not implement inventory or reconcile itself. Handlers call `internal/client` through an in-process `http.RoundTripper` that invokes `api.Handler().ServeHTTP`. Node detail and the Plan preview button obtain the plan from `GET /api/v1/nodes/{id}/plan`. The UI must not import `internal/reconcile`.
+The UI does not implement inventory or reconcile itself. Handlers call `internal/client` through an in-process `http.RoundTripper` that invokes `api.Handler().ServeHTTP`. Password sessions sign loopback requests with UI HMAC headers instead of storing the password as an HMAC key. Node detail and the Plan preview button obtain the plan from `GET /api/v1/nodes/{id}/plan`. The UI must not import `internal/reconcile`.
 
-Writes require an **operator** session on the UI **and** still pass API RBAC. Readonly sessions can view inventory, plan, status, and events; POST/PATCH/DELETE from the UI are rejected with 403 before the API is called.
+Human sign-in is username/password. The first visit with zero human users shows a setup form that creates the first **administrator**. TOTP (RFC 6238) and hashed recovery codes are optional per user. An API token login remains available as a collapsed fallback for `operator` and `readonly` tokens. Agent tokens are rejected.
+
+Writes require an **operator or administrator** session on the UI **and** still pass API RBAC. Readonly sessions can view inventory, plan, status, and events; POST/PATCH/DELETE from the UI are rejected with 403 before the API is called. Human user administration (`/users`) is administrator-only.
+
+Locales: English (fallback) and Russian. Chrome strings use translation keys in `internal/webui/i18n/{en,ru}.json`. Protocol names, IDs, plan lines, and raw diagnostic evidence are not translated. Preference order: user profile → `proxyctl_locale` cookie / session → `Accept-Language` → English.
+
+Navigation groups (current pages only; future Foreign Nodes / Path Checks / Routes are not stubbed):
+
+- Overview: Dashboard
+- Infrastructure: Entry Nodes (`/nodes`), Backends, Tunnels, Mappings, SNI Routes
+- Monitoring: Events
+- Administration: Users & Access, API Reference, Settings
 
 While `LiveApply` is false, the Apply control is disabled and the page shows: "Live apply is not enabled on this controller." Plan preview remains available. The UI does not call `POST .../apply {"dry_run":true}` for preview; that remains a distinct audited API/CLI operation.
 
 HTML `GET /events` is the operator page. It calls `GET /api/v1/events` with `node`, `backend`, `since`, `until`, and `action`.
 
 Vendored assets (no CDN): HTMX 2.0.4 (`0BSD`) and a handwritten `app.css`.
+
+Planning that is **not** yet the implemented contract lives in `docs/ROADMAP.md`. Do not treat that file as a second REST contract.
 
 ## Build and distribution
 

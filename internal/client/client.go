@@ -251,3 +251,33 @@ func (c *Client) ListEvents(ctx context.Context, query string) ([]model.AuditEve
 	err := c.Do(ctx, http.MethodGet, path, nil, &out)
 	return out, err
 }
+
+func (c *Client) ListTokens(ctx context.Context) ([]model.Token, error) {
+	var out []model.Token
+	err := c.Do(ctx, http.MethodGet, "/api/v1/tokens", nil, &out)
+	return out, err
+}
+
+func (c *Client) ListUsers(ctx context.Context) ([]model.User, error) {
+	var out []model.User
+	err := c.Do(ctx, http.MethodGet, "/api/v1/users", nil, &out)
+	return out, err
+}
+
+func (c *Client) CreateUser(ctx context.Context, req model.UserCreateRequest) (*model.User, error) {
+	var out model.User
+	err := c.Do(ctx, http.MethodPost, "/api/v1/users", req, &out)
+	return &out, err
+}
+
+func (c *Client) GetUser(ctx context.Context, id string) (*model.User, error) {
+	var out model.User
+	err := c.Do(ctx, http.MethodGet, "/api/v1/users/"+id, nil, &out)
+	return &out, err
+}
+
+func (c *Client) PatchUser(ctx context.Context, id string, patch model.UserPatch) (*model.User, error) {
+	var out model.User
+	err := c.Do(ctx, http.MethodPatch, "/api/v1/users/"+id, patch, &out)
+	return &out, err
+}

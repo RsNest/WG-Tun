@@ -1,51 +1,51 @@
 {{define "events"}}
 {{template "header" .}}
 {{$f := .Data.Filter}}
-<h1>Events</h1>
-<p class="lead">Controller audit log. Filters are sent to the API as query parameters and are bookmarkable.</p>
+<h1>{{.Tr "events.title"}}</h1>
+<p class="lead">{{.Tr "events.lead"}}</p>
 
 <form class="filter" method="get" action="/events">
   <div class="field">
-    <label for="ev-node">Node</label>
+    <label for="ev-node">{{.Tr "field.node"}}</label>
     <select id="ev-node" name="node">
-      <option value="">any</option>
+      <option value="">{{.Tr "field.any"}}</option>
       {{range .Data.Nodes}}
         <option value="{{.Name}}" {{if eq $.Data.Filter.Node .Name}}selected{{end}}>{{.Name}}</option>
       {{end}}
     </select>
   </div>
   <div class="field">
-    <label for="ev-backend">Backend</label>
+    <label for="ev-backend">{{.Tr "field.backend"}}</label>
     <select id="ev-backend" name="backend">
-      <option value="">any</option>
+      <option value="">{{.Tr "field.any"}}</option>
       {{range .Data.Backends}}
         <option value="{{.Name}}" {{if eq $.Data.Filter.Backend .Name}}selected{{end}}>{{.Name}}</option>
       {{end}}
     </select>
   </div>
   <div class="field">
-    <label for="ev-since">Since</label>
+    <label for="ev-since">{{.Tr "field.since"}}</label>
     <input id="ev-since" type="date" name="since" value="{{$f.Since}}">
   </div>
   <div class="field">
-    <label for="ev-until">Until</label>
+    <label for="ev-until">{{.Tr "field.until"}}</label>
     <input id="ev-until" type="date" name="until" value="{{$f.Until}}">
   </div>
   <div class="field">
-    <label for="ev-action">Action</label>
+    <label for="ev-action">{{.Tr "field.action"}}</label>
     <input id="ev-action" name="action" value="{{$f.Action}}" placeholder="create">
   </div>
   <div class="filter-actions">
-    <button type="submit">Apply filters</button>
-    <a class="btn secondary" href="/events">Clear filters</a>
+    <button type="submit">{{.Tr "action.apply_filters"}}</button>
+    <a class="btn secondary" href="/events">{{.Tr "action.clear_filters"}}</a>
   </div>
 </form>
 
 <div class="panel">
-  {{if not .Data.Events}}<p class="empty">{{if .Data.FilterActive}}No events match these filters.{{else}}No events recorded yet.{{end}}</p>{{else}}
+  {{if not .Data.Events}}<p class="empty">{{if .Data.FilterActive}}{{.Tr "events.empty_filtered"}}{{else}}{{.Tr "events.empty"}}{{end}}</p>{{else}}
   <div class="table-wrap">
   <table class="data">
-    <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Result</th><th>Detail</th></tr></thead>
+    <thead><tr><th>{{.Tr "field.time"}}</th><th>{{.Tr "field.actor"}}</th><th>{{.Tr "field.action"}}</th><th>{{.Tr "field.target"}}</th><th>{{.Tr "field.result"}}</th><th>{{.Tr "field.detail"}}</th></tr></thead>
     <tbody>
     {{range .Data.Events}}
       <tr>
@@ -53,7 +53,7 @@
         <td>{{.Actor}}</td>
         <td class="mono">{{.Action}}</td>
         <td class="mono">{{.Target}}</td>
-        <td>{{if .Success}}<span class="badge status-healthy">ok</span>{{else}}<span class="badge status-unhealthy">error</span>{{end}}</td>
+        <td>{{if .Success}}<span class="badge status-healthy">{{$.Tr "result.ok"}}</span>{{else}}<span class="badge status-unhealthy">{{$.Tr "result.error"}}</span>{{end}}</td>
         <td class="muted">{{dash .Detail}}</td>
       </tr>
     {{end}}

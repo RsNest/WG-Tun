@@ -2,16 +2,16 @@
 {{template "header" .}}
 {{$cat := .Data.Catalog}}
 {{$form := .Data.Form}}
-<h1>Backends</h1>
-<p class="lead">Foreign boxes (typically xray) reached over overlay from a node. Address is the overlay IPv4, not a public IP.</p>
+<h1>{{.Tr "backends.title"}}</h1>
+<p class="lead">{{.Tr "backends.lead"}}</p>
 
-{{if .Data.FormError}}<div class="alert validation" role="alert">{{.Data.FormError}}</div>{{end}}
+{{if .Data.FormError}}<div class="alert validation" role="alert">{{$.Tr .Data.FormError}}</div>{{end}}
 
 <div class="panel">
-  {{if not .Data.Backends}}<p class="empty">No backends configured yet.</p>{{else}}
+  {{if not .Data.Backends}}<p class="empty">{{.Tr "backends.empty"}}</p>{{else}}
   <div class="table-wrap">
   <table class="data">
-    <thead><tr><th>Name</th><th>Node</th><th>Overlay address</th></tr></thead>
+    <thead><tr><th>{{.Tr "field.name"}}</th><th>{{.Tr "field.node"}}</th><th>{{.Tr "field.overlay_address"}}</th></tr></thead>
     <tbody>
     {{range .Data.Backends}}
       <tr>
@@ -28,24 +28,24 @@
 
 {{if .CanWrite}}
 <div class="panel">
-  <h2>Create backend</h2>
+  <h2>{{.Tr "backends.create"}}</h2>
   <form method="post" action="/backends" class="form-grid" data-disable-on-submit>
     <div class="field">
-      <label for="backend-name">Name</label>
+      <label for="backend-name">{{.Tr "field.name"}}</label>
       <input id="backend-name" name="name" required placeholder="backend-a" value="{{index $form "name"}}">
     </div>
     <div class="field">
-      <label for="backend-node">Node</label>
+      <label for="backend-node">{{.Tr "field.node"}}</label>
       <select id="backend-node" name="node_id" required>
         {{range .Data.Nodes}}<option value="{{.ID}}" {{if eq (index $form "node_id") (printf "%s" .ID)}}selected{{end}}>{{.Name}}</option>{{end}}
       </select>
     </div>
     <div class="field">
-      <label for="backend-address">Overlay address</label>
+      <label for="backend-address">{{.Tr "field.overlay_address"}}</label>
       <input id="backend-address" name="address" required placeholder="10.200.1.2" value="{{index $form "address"}}">
     </div>
     <div class="wide actions">
-      <button type="submit">Create</button>
+      <button type="submit">{{.Tr "action.create"}}</button>
     </div>
   </form>
 </div>
@@ -59,19 +59,19 @@
 {{$cat := .Data.Catalog}}
 {{$form := .Data.Form}}
 <h1>{{$b.Name}}</h1>
-<p class="lead">Overlay {{$b.Address}} · node {{$cat.NodeName $b.NodeID}}</p>
-{{if .Data.FormError}}<div class="alert validation" role="alert">{{.Data.FormError}}</div>{{end}}
+<p class="lead">{{.Tr "field.overlay_address"}} {{$b.Address}} · {{.Tr "field.node"}} {{$cat.NodeName $b.NodeID}}</p>
+{{if .Data.FormError}}<div class="alert validation" role="alert">{{$.Tr .Data.FormError}}</div>{{end}}
 
 {{if .CanWrite}}
 <div class="panel">
-  <h2>Edit</h2>
+  <h2>{{.Tr "backends.edit"}}</h2>
   <form method="post" action="/backends/{{$b.ID}}" class="form-grid" data-disable-on-submit>
     <div class="field">
-      <label for="edit-backend-name">Name</label>
+      <label for="edit-backend-name">{{.Tr "field.name"}}</label>
       <input id="edit-backend-name" name="name" required value="{{if index $form "name"}}{{index $form "name"}}{{else}}{{$b.Name}}{{end}}">
     </div>
     <div class="field">
-      <label for="edit-backend-node">Node</label>
+      <label for="edit-backend-node">{{.Tr "field.node"}}</label>
       <select id="edit-backend-node" name="node_id" required>
         {{range .Data.Nodes}}
           <option value="{{.ID}}" {{if or (and (index $form "node_id") (eq (index $form "node_id") (printf "%s" .ID))) (and (not (index $form "node_id")) (eq .ID $b.NodeID))}}selected{{end}}>{{.Name}}</option>
@@ -79,23 +79,23 @@
       </select>
     </div>
     <div class="field">
-      <label for="edit-backend-address">Overlay address</label>
+      <label for="edit-backend-address">{{.Tr "field.overlay_address"}}</label>
       <input id="edit-backend-address" name="address" required value="{{if index $form "address"}}{{index $form "address"}}{{else}}{{$b.Address}}{{end}}">
     </div>
     <div class="wide actions">
-      <button type="submit">Save</button>
-      <a class="btn secondary" href="/backends">Cancel</a>
+      <button type="submit">{{.Tr "action.save"}}</button>
+      <a class="btn secondary" href="/backends">{{.Tr "action.cancel"}}</a>
     </div>
   </form>
 </div>
 {{end}}
 
 <div class="panel">
-  <h2>Tunnels pointing here</h2>
-  {{if not .Data.Tunnels}}<p class="empty">No tunnels point at this backend yet.</p>{{else}}
+  <h2>{{.Tr "backends.tunnels_here"}}</h2>
+  {{if not .Data.Tunnels}}<p class="empty">{{.Tr "backends.empty_tunnels"}}</p>{{else}}
   <div class="table-wrap">
   <table class="data">
-    <thead><tr><th>Type</th><th>Node</th><th>Interface</th></tr></thead>
+    <thead><tr><th>{{.Tr "field.type"}}</th><th>{{.Tr "field.node"}}</th><th>{{.Tr "field.interface"}}</th></tr></thead>
     <tbody>
     {{range .Data.Tunnels}}
       <tr>

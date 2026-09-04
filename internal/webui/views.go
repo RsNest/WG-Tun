@@ -63,9 +63,10 @@ type nodeCard struct {
 	AgentStatus   string
 	AgentReported bool
 	Degraded      bool
+	ReasonKey     string
 }
 
-func buildNodeCard(now time.Time, n model.Node, mappings []model.PortMapping, runtime *model.NodeActualState) nodeCard {
+func buildNodeCard(now time.Time, n model.Node, mappings []model.PortMapping, runtime *model.NodeActualState, locale string) nodeCard {
 	card := nodeCard{
 		ID:            string(n.ID),
 		Name:          n.Name,
@@ -78,6 +79,7 @@ func buildNodeCard(now time.Time, n model.Node, mappings []model.PortMapping, ru
 		Heartbeat:     "—",
 		AgentStatus:   "unknown",
 		MappingLabel:  "—",
+		ReasonKey:     "status.reason.agent_not_reported",
 	}
 	nMaps := 0
 	for _, m := range mappings {
@@ -92,11 +94,11 @@ func buildNodeCard(now time.Time, n model.Node, mappings []model.PortMapping, ru
 	}
 	card.AgentReported = true
 	st := runtime.Status
-	card.Heartbeat = relTime(now, st.LastHeartbeat)
+	card.Heartbeat = relTime(now, st.LastHeartbeat, locale)
 	if st.LastReconcile.IsZero() {
 		card.LastReconcile = "—"
 	} else {
-		card.LastReconcile = relTime(now, st.LastReconcile)
+		card.LastReconcile = relTime(now, st.LastReconcile, locale)
 	}
 	card.Transport = pickTransport(st.TransportStates)
 	if runtime.Actual != nil {
@@ -107,23 +109,32 @@ func buildNodeCard(now time.Time, n model.Node, mappings []model.PortMapping, ru
 	}
 	age := now.UTC().Sub(st.LastHeartbeat.UTC())
 	switch {
-	case age > 45*time.Second || !st.Healthy:
+	case age > 45*time.Second:
 		card.Status = "unhealthy"
 		card.StatusClass = "status-unhealthy"
 		card.AgentStatus = "unhealthy"
+		card.ReasonKey = "status.reason.heartbeat_stale"
+	case !st.Healthy:
+		card.Status = "unhealthy"
+		card.StatusClass = "status-unhealthy"
+		card.AgentStatus = "unhealthy"
+		card.ReasonKey = "status.reason.agent_unhealthy"
 	case isDegraded(card.Transport):
 		card.Status = "degraded"
 		card.StatusClass = "status-degraded"
 		card.AgentStatus = "healthy"
 		card.Degraded = true
+		card.ReasonKey = "status.reason.transport_degraded"
 	case staleHandshake(card.Handshake):
 		card.Status = "warning"
 		card.StatusClass = "status-warning"
 		card.AgentStatus = "healthy"
+		card.ReasonKey = "status.reason.handshake_stale"
 	default:
 		card.Status = "healthy"
 		card.StatusClass = "status-healthy"
 		card.AgentStatus = "healthy"
+		card.ReasonKey = "status.reason.agent_healthy"
 	}
 	return card
 }
@@ -219,6 +230,7 @@ type tunnelRow struct {
 	StatusClass string
 	Healthy     bool
 	KeyPath     string
+	ReasonKey   string
 }
 
 func buildTunnelRow(t model.Tunnel, cat Catalog, actual *model.TunnelActual) tunnelRow {
@@ -236,6 +248,7 @@ func buildTunnelRow(t model.Tunnel, cat Catalog, actual *model.TunnelActual) tun
 		Status:      "unknown",
 		StatusClass: "status-unknown",
 		KeyPath:     t.PrivateKeyPath,
+		ReasonKey:   "status.reason.tunnel_unknown",
 	}
 	if actual == nil {
 		return row
@@ -251,12 +264,15 @@ func buildTunnelRow(t model.Tunnel, cat Catalog, actual *model.TunnelActual) tun
 	if !actual.InterfacePresent {
 		row.Status = "unhealthy"
 		row.StatusClass = "status-unhealthy"
+		row.ReasonKey = "status.reason.interface_missing"
 	} else if t.Type == model.TunnelWireGuard && actual.HandshakeAgeSec >= 180 {
 		row.Status = "warning"
 		row.StatusClass = "status-warning"
+		row.ReasonKey = "status.reason.handshake_warning"
 	} else {
 		row.Status = "healthy"
 		row.StatusClass = "status-healthy"
+		row.ReasonKey = "status.reason.tunnel_healthy"
 	}
 	return row
 }

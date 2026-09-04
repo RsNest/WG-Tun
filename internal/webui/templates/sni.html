@@ -1,15 +1,15 @@
 {{define "sni"}}
 {{template "header" .}}
 {{$form := .Data.Form}}
-<h1>SNI routes</h1>
-<p class="lead">TLS hostname on a node listen address (usually :443) mapped to a backend. One default backend per listen.</p>
-{{if .Data.FormError}}<div class="alert validation" role="alert">{{.Data.FormError}}</div>{{end}}
+<h1>{{.Tr "sni.title"}}</h1>
+<p class="lead">{{.Tr "sni.lead"}}</p>
+{{if .Data.FormError}}<div class="alert validation" role="alert">{{$.Tr .Data.FormError}}</div>{{end}}
 
 <div class="panel">
-  {{if not .Data.Rows}}<p class="empty">No SNI routes configured yet.</p>{{else}}
+  {{if not .Data.Rows}}<p class="empty">{{.Tr "sni.empty"}}</p>{{else}}
   <div class="table-wrap">
   <table class="data">
-    <thead><tr><th>Node</th><th>Listen</th><th>Match</th><th>Backend</th><th>Priority</th>{{if .CanWrite}}<th>Actions</th>{{end}}</tr></thead>
+    <thead><tr><th>{{.Tr "field.node"}}</th><th>{{.Tr "field.listen"}}</th><th>{{.Tr "field.match"}}</th><th>{{.Tr "field.backend"}}</th><th>{{.Tr "field.priority"}}</th>{{if .CanWrite}}<th>{{.Tr "field.actions"}}</th>{{end}}</tr></thead>
     <tbody>
     {{range .Data.Rows}}
       <tr>
@@ -18,7 +18,7 @@
         <td class="mono">{{.Match}}</td>
         <td>{{.Backend}}</td>
         <td>{{.Priority}}</td>
-        {{if $.CanWrite}}<td class="col-actions"><a class="btn secondary" href="/sni-routes/{{.ID}}">Edit</a></td>{{end}}
+        {{if $.CanWrite}}<td class="col-actions"><a class="btn secondary" href="/sni-routes/{{.ID}}">{{$.Tr "action.edit"}}</a></td>{{end}}
       </tr>
     {{end}}
     </tbody>
@@ -29,31 +29,31 @@
 
 {{if .CanWrite}}
 <div class="panel">
-  <h2>Create SNI route</h2>
+  <h2>{{.Tr "sni.create"}}</h2>
   <form method="post" action="/sni-routes" class="form-grid" data-disable-on-submit>
     <div class="field">
-      <label for="sni-node">Node</label>
+      <label for="sni-node">{{.Tr "field.node"}}</label>
       <select id="sni-node" name="node_id" required>
         {{range .Data.Nodes}}<option value="{{.ID}}" {{if eq (index $form "node_id") (printf "%s" .ID)}}selected{{end}}>{{.Name}}</option>{{end}}
       </select>
     </div>
     <div class="field">
-      <label for="sni-listen">Listen</label>
+      <label for="sni-listen">{{.Tr "field.listen"}}</label>
       <input id="sni-listen" name="listen" value="{{if index $form "listen"}}{{index $form "listen"}}{{else}}:443{{end}}" required>
     </div>
     <div class="field">
-      <label for="sni-default">Default backend</label>
+      <label for="sni-default">{{.Tr "field.default_backend"}}</label>
       <select id="sni-default" name="default_backend" required>
         {{range .Data.Backends}}<option value="{{.Name}}" {{if eq (index $form "default_backend") .Name}}selected{{end}}>{{.Name}}</option>{{end}}
       </select>
     </div>
     <div class="field wide">
-      <label for="sni-matches">Extra hostname matches</label>
+      <label for="sni-matches">{{.Tr "field.extra_matches"}}</label>
       <textarea id="sni-matches" name="matches" placeholder="app.example.com backend-a">{{index $form "matches"}}</textarea>
-      <span class="field-help">One per line: hostname backend-name</span>
+      <span class="field-help">{{.Tr "sni.matches_help"}}</span>
     </div>
     <div class="wide actions">
-      <button type="submit">Create</button>
+      <button type="submit">{{.Tr "action.create"}}</button>
     </div>
   </form>
 </div>
@@ -65,11 +65,11 @@
 {{template "header" .}}
 {{$r := .Data.Route}}
 {{$form := .Data.Form}}
-<h1>Edit SNI route</h1>
-{{if .Data.FormError}}<div class="alert validation" role="alert">{{.Data.FormError}}</div>{{end}}
+<h1>{{.Tr "sni.edit"}}</h1>
+{{if .Data.FormError}}<div class="alert validation" role="alert">{{$.Tr .Data.FormError}}</div>{{end}}
 <form method="post" action="/sni-routes/{{$r.ID}}" class="form-grid panel" data-disable-on-submit>
   <div class="field">
-    <label for="edit-sni-node">Node</label>
+    <label for="edit-sni-node">{{.Tr "field.node"}}</label>
     <select id="edit-sni-node" name="node_id" required>
       {{range .Data.Nodes}}
         <option value="{{.ID}}" {{if or (and (index $form "node_id") (eq (index $form "node_id") (printf "%s" .ID))) (and (not (index $form "node_id")) (eq .ID $r.NodeID))}}selected{{end}}>{{.Name}}</option>
@@ -77,11 +77,11 @@
     </select>
   </div>
   <div class="field">
-    <label for="edit-sni-listen">Listen</label>
+    <label for="edit-sni-listen">{{.Tr "field.listen"}}</label>
     <input id="edit-sni-listen" name="listen" required value="{{if index $form "listen"}}{{index $form "listen"}}{{else}}{{$r.Listen}}{{end}}">
   </div>
   <div class="field">
-    <label for="edit-sni-default">Default backend</label>
+    <label for="edit-sni-default">{{.Tr "field.default_backend"}}</label>
     <select id="edit-sni-default" name="default_backend" required>
       {{range .Data.Backends}}
         <option value="{{.Name}}" {{if eq .Name $.Data.DefaultBackend}}selected{{end}}>{{.Name}}</option>
@@ -89,12 +89,12 @@
     </select>
   </div>
   <div class="field wide">
-    <label for="edit-sni-matches">Extra hostname matches</label>
+    <label for="edit-sni-matches">{{.Tr "field.extra_matches"}}</label>
     <textarea id="edit-sni-matches" name="matches">{{if index $form "matches"}}{{index $form "matches"}}{{else}}{{.Data.ExtraMatches}}{{end}}</textarea>
   </div>
   <div class="wide actions">
-    <button type="submit">Save</button>
-    <a class="btn secondary" href="/sni-routes">Cancel</a>
+    <button type="submit">{{.Tr "action.save"}}</button>
+    <a class="btn secondary" href="/sni-routes">{{.Tr "action.cancel"}}</a>
   </div>
 </form>
 {{template "footer" .}}

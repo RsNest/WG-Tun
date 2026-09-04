@@ -1,14 +1,14 @@
 {{define "nodes"}}
 {{template "header" .}}
-<h1>Nodes</h1>
-<p class="lead">Edge boxes on the RU side. DNS for customer domains should point at a node’s public IP.</p>
+<h1>{{.Tr "nodes.title"}}</h1>
+<p class="lead">{{.Tr "nodes.lead"}}</p>
 <div class="panel">
   {{if not .Data}}
-    <p class="empty">No nodes configured yet.</p>
+    <p class="empty">{{.Tr "nodes.empty"}}</p>
   {{else}}
   <div class="table-wrap">
   <table class="data">
-    <thead><tr><th>Name</th><th>Public IP</th><th>ID</th></tr></thead>
+    <thead><tr><th>{{.Tr "field.name"}}</th><th>{{.Tr "field.public_ip"}}</th><th>{{.Tr "field.id"}}</th></tr></thead>
     <tbody>
     {{range .Data}}
       <tr>
@@ -31,39 +31,39 @@
 {{$card := .Data.Card}}
 {{$cat := .Data.Catalog}}
 <h1>{{$n.Name}}</h1>
-<p class="lead">Node diagnostic view: inventory, last reported actual state, and the current reconcile plan.</p>
+<p class="lead">{{.Tr "nodes.detail_lead"}}</p>
 
 <section class="panel" aria-labelledby="overview-h">
-  <h2 id="overview-h">Overview</h2>
-  <p>
-    <span class="badge {{$card.StatusClass}}">{{$card.Status}}</span>
+  <h2 id="overview-h">{{.Tr "nodes.overview"}}</h2>
+  <p class="status-chip">
+    <span class="badge {{$card.StatusClass}}">{{$.Tr (printf "status.%s" $card.Status)}}</span>
     <span class="transport">{{dash $card.Transport}}</span>
   </p>
+  <p class="status-reason">{{$.Tr $card.ReasonKey}}</p>
   <dl class="meta">
-    <dt>Name</dt><dd>{{$n.Name}}</dd>
-    <dt>Public IP</dt><dd>{{dash $n.PublicIP}}</dd>
-    <dt>Management address</dt><dd>{{dash .Data.MgmtAddr}}</dd>
-    <dt>Labels</dt><dd>{{dash .Data.Labels}}</dd>
-    <dt>Node state</dt><dd>{{$card.Status}}</dd>
-    <dt>Agent status</dt><dd>{{dash $card.AgentStatus}}</dd>
-    <dt>Current transport</dt><dd class="transport">{{dash $card.Transport}}</dd>
-    <dt>Last reconcile</dt><dd>{{dash $card.LastReconcile}}</dd>
+    <dt>{{.Tr "field.name"}}</dt><dd>{{$n.Name}}</dd>
+    <dt>{{.Tr "field.public_ip"}}</dt><dd>{{dash $n.PublicIP}}</dd>
+    <dt>{{.Tr "field.mgmt"}}</dt><dd>{{dash .Data.MgmtAddr}}</dd>
+    <dt>{{.Tr "field.labels"}}</dt><dd>{{dash .Data.Labels}}</dd>
+    <dt>{{.Tr "field.node_state"}}</dt><dd>{{$.Tr (printf "status.%s" $card.Status)}}</dd>
+    <dt>{{.Tr "field.agent"}}</dt><dd>{{$.Tr (printf "status.%s" $card.AgentStatus)}}</dd>
+    <dt>{{.Tr "field.current_transport"}}</dt><dd class="transport">{{dash $card.Transport}}</dd>
+    <dt>{{.Tr "field.last_reconcile"}}</dt><dd>{{dash $card.LastReconcile}}</dd>
   </dl>
-  {{if not $card.AgentReported}}<p class="hint">Agent has not reported actual state yet.</p>{{end}}
 </section>
 
 <section class="panel" aria-labelledby="plan-h">
-  <h2 id="plan-h">Plan</h2>
-  <p class="panel-help">Read-only difference between desired state and last stored actual state. This does not write an audit event.</p>
+  <h2 id="plan-h">{{.Tr "nodes.plan"}}</h2>
+  <p class="panel-help">{{.Tr "nodes.plan_help"}}</p>
   <div class="actions">
-    <button type="button" hx-get="/nodes/{{$n.ID}}/plan" hx-target="#plan" hx-swap="outerHTML" hx-disabled-elt="this">Refresh plan</button>
+    <button type="button" hx-get="/nodes/{{$n.ID}}/plan" hx-target="#plan" hx-swap="outerHTML" hx-disabled-elt="this">{{.Tr "action.refresh_plan"}}</button>
     {{if .CanWrite}}
-      <button type="button" class="secondary" hx-post="/nodes/{{$n.ID}}/dry-run" hx-target="#plan" hx-swap="outerHTML" hx-disabled-elt="this">Run audited dry-run</button>
+      <button type="button" class="secondary" hx-post="/nodes/{{$n.ID}}/dry-run" hx-target="#plan" hx-swap="outerHTML" hx-disabled-elt="this">{{.Tr "action.dry_run"}}</button>
       {{if .LiveApply}}
-      <button type="button" class="secondary" hx-post="/nodes/{{$n.ID}}/apply" hx-target="#plan" hx-swap="outerHTML" hx-disabled-elt="this">Apply</button>
+      <button type="button" class="secondary" hx-post="/nodes/{{$n.ID}}/apply" hx-target="#plan" hx-swap="outerHTML" hx-disabled-elt="this">{{.Tr "action.apply"}}</button>
       {{else}}
-      <button type="button" class="secondary" disabled>Apply</button>
-      <p class="hint">Live apply is not enabled on this controller.</p>
+      <button type="button" class="secondary" disabled>{{.Tr "action.apply"}}</button>
+      <p class="hint">{{.Tr "nodes.live_apply_disabled"}}</p>
       {{end}}
     {{end}}
   </div>
@@ -71,11 +71,11 @@
 </section>
 
 <section class="panel" aria-labelledby="tunnels-h">
-  <h2 id="tunnels-h">Tunnels</h2>
-  {{if not .Data.Tunnels}}<p class="empty">No tunnels configured for this node.</p>{{else}}
+  <h2 id="tunnels-h">{{.Tr "nodes.tunnels"}}</h2>
+  {{if not .Data.Tunnels}}<p class="empty">{{.Tr "nodes.empty_tunnels"}}</p>{{else}}
   <div class="table-wrap">
   <table class="data">
-    <thead><tr><th>Type</th><th>Backend</th><th>Interface</th><th>Endpoint</th><th>Handshake</th><th>RX / TX</th><th>Priority / status</th></tr></thead>
+    <thead><tr><th>{{.Tr "field.type"}}</th><th>{{.Tr "field.backend"}}</th><th>{{.Tr "field.interface"}}</th><th>{{.Tr "field.endpoint"}}</th><th>{{.Tr "field.handshake"}}</th><th>{{.Tr "field.rx"}} / {{.Tr "field.tx"}}</th><th>{{.Tr "field.priority"}} / {{.Tr "field.status"}}</th></tr></thead>
     <tbody>
     {{range .Data.Tunnels}}
       <tr>
@@ -85,7 +85,11 @@
         <td class="mono">{{dash .Endpoint}}</td>
         <td class="mono">{{dash .Handshake}}</td>
         <td class="mono">{{dash .Rx}} / {{dash .Tx}}</td>
-        <td><span class="badge {{.StatusClass}}">{{.Status}}</span><span class="cell-sub">priority {{.Priority}}</span></td>
+        <td>
+          <span class="badge {{.StatusClass}}">{{$.Tr (printf "status.%s" .Status)}}</span>
+          <span class="cell-sub">{{$.Tr "field.priority"}} {{.Priority}}</span>
+          <span class="cell-sub">{{$.Tr .ReasonKey}}</span>
+        </td>
       </tr>
     {{end}}
     </tbody>
@@ -95,11 +99,11 @@
 </section>
 
 <section class="panel" aria-labelledby="maps-h">
-  <h2 id="maps-h">Mappings</h2>
-  {{if not .Data.Mappings}}<p class="empty">No mappings configured for this node.</p>{{else}}
+  <h2 id="maps-h">{{.Tr "nodes.mappings"}}</h2>
+  {{if not .Data.Mappings}}<p class="empty">{{.Tr "nodes.empty_mappings"}}</p>{{else}}
   <div class="table-wrap">
   <table class="data">
-    <thead><tr><th>Proto</th><th>Public</th><th>Backend</th><th>Port</th><th>Enabled</th></tr></thead>
+    <thead><tr><th>{{.Tr "field.proto"}}</th><th>{{.Tr "field.public"}}</th><th>{{.Tr "field.backend"}}</th><th>{{.Tr "field.backend_port"}}</th><th>{{.Tr "field.enabled"}}</th></tr></thead>
     <tbody>
     {{range .Data.Mappings}}
       <tr>
@@ -107,7 +111,7 @@
         <td class="mono">{{.PublicPort}}</td>
         <td>{{$cat.BackendName .BackendID}}</td>
         <td class="mono">{{.BackendPort}}</td>
-        <td>{{if .Enabled}}<span class="badge status-healthy">enabled</span>{{else}}<span class="badge status-disabled">disabled</span>{{end}}</td>
+        <td>{{if .Enabled}}<span class="badge status-healthy">{{$.Tr "field.enabled"}}</span>{{else}}<span class="badge status-disabled">{{$.Tr "field.disabled"}}</span>{{end}}</td>
       </tr>
     {{end}}
     </tbody>
@@ -117,11 +121,11 @@
 </section>
 
 <section class="panel" aria-labelledby="sni-h">
-  <h2 id="sni-h">SNI routes</h2>
-  {{if not .Data.Sni}}<p class="empty">No SNI routes configured for this node.</p>{{else}}
+  <h2 id="sni-h">{{.Tr "nodes.sni"}}</h2>
+  {{if not .Data.Sni}}<p class="empty">{{.Tr "nodes.empty_sni"}}</p>{{else}}
   <div class="table-wrap">
   <table class="data">
-    <thead><tr><th>Listen</th><th>Match</th><th>Backend</th><th>Priority</th></tr></thead>
+    <thead><tr><th>{{.Tr "field.listen"}}</th><th>{{.Tr "field.match"}}</th><th>{{.Tr "field.backend"}}</th><th>{{.Tr "field.priority"}}</th></tr></thead>
     <tbody>
     {{range .Data.Sni}}
       <tr>
@@ -139,18 +143,18 @@
 
 {{if and .CanWrite .Data.CanFailback}}
 <section class="panel" aria-labelledby="failback-h">
-  <h2 id="failback-h">Failback</h2>
-  <p class="panel-help">Failback switches this node from SSH fallback (SSH_PRIMARY) back to WireGuard (WG_PRIMARY).</p>
-  <form method="post" action="/nodes/{{$n.ID}}/failback" hx-post="/nodes/{{$n.ID}}/failback" hx-swap="none" hx-confirm="Switch this node from SSH fallback back to WireGuard?" hx-disabled-elt="find button">
+  <h2 id="failback-h">{{.Tr "nodes.failback"}}</h2>
+  <p class="panel-help">{{.Tr "nodes.failback_help"}}</p>
+  <form method="post" action="/nodes/{{$n.ID}}/failback" hx-post="/nodes/{{$n.ID}}/failback" hx-swap="none" hx-confirm="{{.Tr "nodes.confirm_failback"}}" hx-disabled-elt="find button">
     <div class="field" style="max-width:280px">
-      <label for="failback-backend">Backend</label>
+      <label for="failback-backend">{{.Tr "field.backend"}}</label>
       <select id="failback-backend" name="backend" required>
         {{range .Data.Failback}}
           <option value="{{.Name}}">{{.Name}}</option>
         {{end}}
       </select>
     </div>
-    <p><button class="danger" type="submit">Failback</button></p>
+    <p><button class="danger" type="submit">{{.Tr "action.failback"}}</button></p>
   </form>
 </section>
 {{end}}

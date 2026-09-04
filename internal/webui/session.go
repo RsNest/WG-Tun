@@ -13,18 +13,24 @@ import (
 )
 
 const (
-	cookieName = "proxyctl_ui"
-	sessionTTL = 12 * time.Hour
+	cookieName   = "proxyctl_ui"
+	localeCookie = "proxyctl_locale"
+	sessionTTL   = 12 * time.Hour
+	localeTTL    = 365 * 24 * time.Hour
 )
 
 type session struct {
-	ID       string
-	Token    string
-	Name     string
-	Role     model.Role
-	Expires  time.Time
-	FlashOK  string
-	FlashErr string
+	ID          string
+	Token       string
+	UserID      model.ID
+	Name        string
+	Role        model.Role
+	Locale      string
+	MFAPending  bool
+	Expires     time.Time
+	FlashOK     string
+	FlashErr    string
+	FlashErrRaw string
 }
 
 type sessionStore struct {
@@ -45,23 +51,20 @@ func newSessionStore(now func() time.Time) (*sessionStore, error) {
 	return &sessionStore{secret: secret, byID: map[string]*session{}, now: now}, nil
 }
 
-func (s *sessionStore) put(token, name string, role model.Role) (*session, error) {
+func (s *sessionStore) put(in session) (*session, error) {
 	idRaw := make([]byte, 16)
 	if _, err := rand.Read(idRaw); err != nil {
 		return nil, err
 	}
-	id := hex.EncodeToString(idRaw)
-	sess := &session{
-		ID:      id,
-		Token:   token,
-		Name:    name,
-		Role:    role,
-		Expires: s.now().UTC().Add(sessionTTL),
+	in.ID = hex.EncodeToString(idRaw)
+	in.Expires = s.now().UTC().Add(sessionTTL)
+	if in.Locale == "" {
+		in.Locale = "en"
 	}
 	s.mu.Lock()
-	s.byID[id] = sess
+	s.byID[in.ID] = &in
 	s.mu.Unlock()
-	return sess, nil
+	return &in, nil
 }
 
 func (s *sessionStore) get(id string) *session {
@@ -90,19 +93,46 @@ func (s *sessionStore) setFlash(id, ok, errMsg string) {
 	if sess := s.byID[id]; sess != nil {
 		sess.FlashOK = ok
 		sess.FlashErr = errMsg
+		sess.FlashErrRaw = ""
 	}
 }
 
-func (s *sessionStore) takeFlash(id string) (ok, errMsg string) {
+func (s *sessionStore) setFlashRaw(id, errMsg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sess := s.byID[id]; sess != nil {
+		sess.FlashOK = ""
+		sess.FlashErr = ""
+		sess.FlashErrRaw = errMsg
+	}
+}
+
+func (s *sessionStore) takeFlash(id string) (ok, errMsg, raw string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sess := s.byID[id]
 	if sess == nil {
-		return "", ""
+		return "", "", ""
 	}
-	ok, errMsg = sess.FlashOK, sess.FlashErr
-	sess.FlashOK, sess.FlashErr = "", ""
-	return ok, errMsg
+	ok, errMsg, raw = sess.FlashOK, sess.FlashErr, sess.FlashErrRaw
+	sess.FlashOK, sess.FlashErr, sess.FlashErrRaw = "", "", ""
+	return ok, errMsg, raw
+}
+
+func (s *sessionStore) updateLocale(id, locale string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sess := s.byID[id]; sess != nil {
+		sess.Locale = locale
+	}
+}
+
+func (s *sessionStore) clearMFA(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sess := s.byID[id]; sess != nil {
+		sess.MFAPending = false
+	}
 }
 
 func (s *sessionStore) sign(id string) string {
@@ -171,5 +201,9 @@ func (s *Server) clearSessionCookie(w http.ResponseWriter) {
 }
 
 func canWrite(role model.Role) bool {
-	return role == model.RoleOperator
+	return role == model.RoleAdministrator || role == model.RoleOperator
+}
+
+func canAdmin(role model.Role) bool {
+	return role == model.RoleAdministrator
 }

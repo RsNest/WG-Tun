@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"proxyctl/internal/model"
+	"proxyctl/internal/webui/i18n"
 )
 
 func (s *Server) nodePlan(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +38,7 @@ func (s *Server) nodeDryRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	view := planViewFromApply(res)
-	view.Notice = "Audited dry-run recorded."
+	view.Notice = i18n.T(s.locale(r), "flash.dry_run_recorded")
 	s.writePlan(w, r, id, view, nil)
 }
 
@@ -57,7 +58,7 @@ func (s *Server) nodeApply(w http.ResponseWriter, r *http.Request) {
 	}
 	view := planViewFromApply(res)
 	if view.Notice == "" && view.Error == "" {
-		view.Notice = "Apply completed."
+		view.Notice = i18n.T(s.locale(r), "flash.apply_completed")
 	}
 	s.writePlan(w, r, id, view, nil)
 }
@@ -65,7 +66,7 @@ func (s *Server) nodeApply(w http.ResponseWriter, r *http.Request) {
 func (s *Server) writePlan(w http.ResponseWriter, r *http.Request, id string, view planView, err error) {
 	if !hx(r) {
 		if err != nil {
-			s.flash(r, "", firstNonEmpty(view.Error, s.apiErr(err)))
+			s.flashRaw(r, firstNonEmpty(view.Error, s.apiErr(err)))
 		} else if view.Notice != "" {
 			s.flash(r, view.Notice, "")
 		}
@@ -97,23 +98,23 @@ func (s *Server) nodeFailback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		s.flash(r, "", "invalid form")
+		s.flash(r, "", "flash.invalid_form")
 		s.redirect(w, r, "/nodes/"+r.PathValue("id"))
 		return
 	}
 	id := r.PathValue("id")
 	backend := firstNonEmpty(r.FormValue("backend"), r.FormValue("backend_id"))
 	if backend == "" {
-		s.flash(r, "", "backend is required")
+		s.flash(r, "", "flash.backend_required")
 		s.redirect(w, r, "/nodes/"+id)
 		return
 	}
 	if err := s.api(r).Failback(r.Context(), id, backend); err != nil {
-		s.flash(r, "", s.apiErr(err))
+		s.flashRaw(r, s.apiErr(err))
 		s.redirect(w, r, "/nodes/"+id)
 		return
 	}
-	s.flash(r, "failback requested", "")
+	s.flash(r, "flash.failback", "")
 	s.redirect(w, r, "/nodes/"+id)
 }
 
@@ -122,7 +123,7 @@ func (s *Server) backendCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		s.renderBackends(w, r, emptyForm(), "invalid form")
+		s.renderBackends(w, r, emptyForm(), "flash.invalid_form")
 		return
 	}
 	b := model.Backend{
@@ -135,7 +136,7 @@ func (s *Server) backendCreate(w http.ResponseWriter, r *http.Request) {
 		s.renderBackends(w, r, formMap(r), s.apiErr(err))
 		return
 	}
-	s.flash(r, "backend created", "")
+	s.flash(r, "flash.backend_created", "")
 	s.redirect(w, r, "/backends/"+string(out.ID))
 }
 
@@ -144,7 +145,7 @@ func (s *Server) backendUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		s.renderBackendDetail(w, r, r.PathValue("id"), emptyForm(), "invalid form")
+		s.renderBackendDetail(w, r, r.PathValue("id"), emptyForm(), "flash.invalid_form")
 		return
 	}
 	id := r.PathValue("id")
@@ -158,7 +159,7 @@ func (s *Server) backendUpdate(w http.ResponseWriter, r *http.Request) {
 		s.renderBackendDetail(w, r, id, formMap(r), s.apiErr(err))
 		return
 	}
-	s.flash(r, "backend updated", "")
+	s.flash(r, "flash.backend_updated", "")
 	s.redirect(w, r, "/backends/"+id)
 }
 
@@ -167,7 +168,7 @@ func (s *Server) tunnelCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		s.renderTunnels(w, r, emptyForm(), "invalid form")
+		s.renderTunnels(w, r, emptyForm(), "flash.invalid_form")
 		return
 	}
 	listen, _ := strconv.Atoi(r.FormValue("listen_port"))
@@ -191,7 +192,7 @@ func (s *Server) tunnelCreate(w http.ResponseWriter, r *http.Request) {
 		s.renderTunnels(w, r, formMap(r), s.apiErr(err))
 		return
 	}
-	s.flash(r, "tunnel created", "")
+	s.flash(r, "flash.tunnel_created", "")
 	s.redirect(w, r, "/tunnels")
 }
 
@@ -200,7 +201,7 @@ func (s *Server) mappingCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		s.renderMappings(w, r, emptyForm(), "invalid form")
+		s.renderMappings(w, r, emptyForm(), "flash.invalid_form")
 		return
 	}
 	pub, _ := strconv.Atoi(r.FormValue("public_port"))
@@ -216,7 +217,7 @@ func (s *Server) mappingCreate(w http.ResponseWriter, r *http.Request) {
 		s.renderMappings(w, r, formMap(r), s.apiErr(err))
 		return
 	}
-	s.flash(r, "mapping created", "")
+	s.flash(r, "flash.mapping_created", "")
 	s.redirect(w, r, "/mappings")
 }
 
@@ -225,7 +226,7 @@ func (s *Server) mappingUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		s.renderMappings(w, r, emptyForm(), "invalid form")
+		s.renderMappings(w, r, emptyForm(), "flash.invalid_form")
 		return
 	}
 	id := r.PathValue("id")
@@ -253,7 +254,7 @@ func (s *Server) mappingUpdate(w http.ResponseWriter, r *http.Request) {
 		s.renderMappings(w, r, formMap(r), s.apiErr(err))
 		return
 	}
-	s.flash(r, "mapping updated", "")
+	s.flash(r, "flash.mapping_updated", "")
 	s.redirect(w, r, "/mappings")
 }
 
@@ -266,12 +267,12 @@ func (s *Server) mappingPatch(w http.ResponseWriter, r *http.Request) {
 	raw := firstNonEmpty(r.FormValue("enabled"), r.URL.Query().Get("enabled"))
 	if raw == "" {
 		if hx(r) {
-			s.renderStatus(w, r, http.StatusBadRequest, "alert", page{Data: alertView{
-				Kind: "validation", Title: "Invalid request", Message: "enabled is required",
-			}})
+			s.renderStatus(w, r, http.StatusBadRequest, "alert", s.pageBase(r, "", "").withAlert(alertView{
+				Kind: "validation", TitleKey: "error.invalid_title", MessageKey: "error.enabled_required",
+			}))
 			return
 		}
-		s.flash(r, "", "enabled is required")
+		s.flash(r, "", "error.enabled_required")
 		s.redirect(w, r, "/mappings")
 		return
 	}
@@ -279,10 +280,10 @@ func (s *Server) mappingPatch(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.api(r).PatchMapping(r.Context(), id, model.MappingPatch{Enabled: &enabled}); err != nil {
 		if hx(r) {
 			status, a := classifyUIError(err)
-			s.renderStatus(w, r, status, "alert", page{Data: a})
+			s.renderStatus(w, r, status, "alert", s.pageBase(r, "", "").withAlert(a))
 			return
 		}
-		s.flash(r, "", s.apiErr(err))
+		s.flashRaw(r, s.apiErr(err))
 		s.redirect(w, r, "/mappings")
 		return
 	}
@@ -299,11 +300,11 @@ func (s *Server) mappingDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	id := r.PathValue("id")
 	if err := s.api(r).DeleteMapping(r.Context(), id); err != nil {
-		s.flash(r, "", s.apiErr(err))
+		s.flashRaw(r, s.apiErr(err))
 		s.redirect(w, r, "/mappings")
 		return
 	}
-	s.flash(r, "mapping deleted", "")
+	s.flash(r, "flash.mapping_deleted", "")
 	s.redirect(w, r, "/mappings")
 }
 
@@ -312,7 +313,7 @@ func (s *Server) sniCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		s.renderSni(w, r, emptyForm(), "invalid form")
+		s.renderSni(w, r, emptyForm(), "flash.invalid_form")
 		return
 	}
 	route := model.SniRoute{
@@ -324,7 +325,7 @@ func (s *Server) sniCreate(w http.ResponseWriter, r *http.Request) {
 		s.renderSni(w, r, formMap(r), s.apiErr(err))
 		return
 	}
-	s.flash(r, "SNI route created", "")
+	s.flash(r, "flash.sni_created", "")
 	s.redirect(w, r, "/sni-routes")
 }
 
@@ -333,7 +334,7 @@ func (s *Server) sniUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		s.renderSniDetail(w, r, r.PathValue("id"), emptyForm(), "invalid form")
+		s.renderSniDetail(w, r, r.PathValue("id"), emptyForm(), "flash.invalid_form")
 		return
 	}
 	id := r.PathValue("id")
@@ -347,13 +348,18 @@ func (s *Server) sniUpdate(w http.ResponseWriter, r *http.Request) {
 		s.renderSniDetail(w, r, id, formMap(r), s.apiErr(err))
 		return
 	}
-	s.flash(r, "SNI route updated", "")
+	s.flash(r, "flash.sni_updated", "")
 	s.redirect(w, r, "/sni-routes")
 }
 
 func (s *Server) apiErr(err error) string {
 	_, a := classifyUIError(err)
-	return a.Message
+	return a.resolve("en").Message
+}
+
+func (s *Server) apiErrT(r *http.Request, err error) string {
+	_, a := classifyUIError(err)
+	return s.localizeAlert(r, a).Message
 }
 
 func formMap(r *http.Request) map[string]string {

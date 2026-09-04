@@ -11,21 +11,37 @@ import (
 	"time"
 
 	"proxyctl/internal/model"
+	"proxyctl/internal/webui/i18n"
 )
 
 //go:embed templates/*.html static/app.css static/app.js static/htmx.min.js static/LICENSE-htmx.txt
 var content embed.FS
 
 type page struct {
-	Title     string
-	Nav       string
-	Principal *model.PrincipalView
-	CanWrite  bool
-	LiveApply bool
-	FlashOK   string
-	FlashErr  string
-	Partial   bool
-	Data      any
+	Title        string
+	Nav          string
+	Principal    *model.PrincipalView
+	CanWrite     bool
+	CanAdmin     bool
+	UserID       string
+	TokenSession bool
+	LiveApply    bool
+	Locale       string
+	T            func(string) string
+	FlashOK      string
+	FlashErr     string
+	Partial      bool
+	Data         any
+}
+
+func (p page) Tr(key string) string {
+	if key == "" {
+		return ""
+	}
+	if p.T != nil {
+		return p.T(key)
+	}
+	return i18n.T(p.Locale, key)
 }
 
 func parseTemplates() (*template.Template, error) {
@@ -85,7 +101,7 @@ func fmtTime(t time.Time) string {
 	return t.UTC().Format("2006-01-02 15:04:05 UTC")
 }
 
-func relTime(now, t time.Time) string {
+func relTime(now, t time.Time, locale string) string {
 	if t.IsZero() {
 		return "—"
 	}
@@ -95,15 +111,15 @@ func relTime(now, t time.Time) string {
 	}
 	switch {
 	case d < time.Second:
-		return "just now"
+		return i18n.T(locale, "time.just_now")
 	case d < time.Minute:
-		return strconv.Itoa(int(d.Seconds())) + "s ago"
+		return i18n.Format(locale, "time.seconds_ago", int(d.Seconds()))
 	case d < time.Hour:
-		return strconv.Itoa(int(d.Minutes())) + "m ago"
+		return i18n.Format(locale, "time.minutes_ago", int(d.Minutes()))
 	case d < 24*time.Hour:
-		return strconv.Itoa(int(d.Hours())) + "h ago"
+		return i18n.Format(locale, "time.hours_ago", int(d.Hours()))
 	default:
-		return strconv.Itoa(int(d.Hours()/24)) + "d ago"
+		return i18n.Format(locale, "time.days_ago", int(d.Hours()/24))
 	}
 }
 

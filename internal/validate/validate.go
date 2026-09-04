@@ -43,6 +43,30 @@ func TokenName(name string) error {
 	return nil
 }
 
+func Username(name string) error {
+	n := strings.ToLower(strings.TrimSpace(name))
+	if n == "" {
+		return errf("username is required")
+	}
+	if len(n) > 63 || !dnsLabelRe.MatchString(n) {
+		return errf("username must be a lowercase DNS label (max 63)")
+	}
+	return nil
+}
+
+func HumanPassword(pw string) error {
+	if strings.TrimSpace(pw) == "" {
+		return errf("password is required")
+	}
+	if len(pw) < 10 {
+		return errf("password must be at least 10 characters")
+	}
+	if len(pw) > 200 {
+		return errf("password is too long")
+	}
+	return nil
+}
+
 func IPv4(s string) error {
 	s = strings.TrimSpace(s)
 	if s == "" {

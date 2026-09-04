@@ -1,12 +1,14 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -24,12 +26,18 @@ import (
 const (
 	HeaderTimestamp = "X-Proxyctl-Timestamp"
 	HeaderSignature = "X-Proxyctl-Signature"
+	HeaderUIName    = "X-Proxyctl-UI-Name"
+	HeaderUIRole    = "X-Proxyctl-UI-Role"
+	HeaderUIUser    = "X-Proxyctl-UI-User"
+	HeaderUITime    = "X-Proxyctl-UI-Timestamp"
+	HeaderUISig     = "X-Proxyctl-UI-Signature"
 	bootstrapName   = "bootstrap-operator"
 )
 
 type Principal struct {
-	Name string
-	Role model.Role
+	Name   string
+	Role   model.Role
+	UserID model.ID
 }
 
 type Authenticator struct {
@@ -37,13 +45,18 @@ type Authenticator struct {
 	hmacReq bool
 	maxSkew time.Duration
 	cost    int
+	uiKey   []byte
 }
 
 func New(st store.Store, hmacRequired bool, maxSkew time.Duration) *Authenticator {
 	if maxSkew == 0 {
 		maxSkew = 5 * time.Minute
 	}
-	return &Authenticator{store: st, hmacReq: hmacRequired, maxSkew: maxSkew, cost: bcrypt.DefaultCost}
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		key = []byte("proxyctl-ui-fallback-key-not-for-prod")
+	}
+	return &Authenticator{store: st, hmacReq: hmacRequired, maxSkew: maxSkew, cost: bcrypt.DefaultCost, uiKey: key}
 }
 
 func (a *Authenticator) EnsureBootstrapToken(ctx context.Context, tokenFile string) (created bool, err error) {
@@ -112,6 +125,11 @@ func (a *Authenticator) CreateToken(ctx context.Context, name string, role model
 }
 
 func (a *Authenticator) Authenticate(r *http.Request, body []byte) (*Principal, error) {
+	if p, ok, err := a.verifyUI(r, body); err != nil {
+		return nil, err
+	} else if ok {
+		return p, nil
+	}
 	raw := strings.TrimSpace(r.Header.Get("Authorization"))
 	if !strings.HasPrefix(strings.ToLower(raw), "bearer ") {
 		return nil, model.Unauthorized("missing bearer token")
@@ -174,12 +192,76 @@ func (a *Authenticator) verifyHMAC(r *http.Request, body []byte, token string) e
 	return nil
 }
 
+func (a *Authenticator) SignUI(r *http.Request, name string, role model.Role, userID model.ID) {
+	if a == nil || r == nil {
+		return
+	}
+	var body []byte
+	if r.Body != nil {
+		body, _ = io.ReadAll(r.Body)
+		r.Body = io.NopCloser(bytes.NewReader(body))
+	}
+	ts := strconv.FormatInt(time.Now().Unix(), 10)
+	r.Header.Set(HeaderUIName, name)
+	r.Header.Set(HeaderUIRole, string(role))
+	r.Header.Set(HeaderUIUser, string(userID))
+	r.Header.Set(HeaderUITime, ts)
+	r.Header.Set(HeaderUISig, a.uiMAC(ts, r.Method, r.URL.Path, name, string(role), string(userID), body))
+}
+
+func (a *Authenticator) verifyUI(r *http.Request, body []byte) (*Principal, bool, error) {
+	name := strings.TrimSpace(r.Header.Get(HeaderUIName))
+	roleRaw := strings.TrimSpace(r.Header.Get(HeaderUIRole))
+	userID := strings.TrimSpace(r.Header.Get(HeaderUIUser))
+	ts := strings.TrimSpace(r.Header.Get(HeaderUITime))
+	sig := strings.TrimSpace(r.Header.Get(HeaderUISig))
+	if name == "" && roleRaw == "" && ts == "" && sig == "" {
+		return nil, false, nil
+	}
+	if name == "" || roleRaw == "" || ts == "" || sig == "" {
+		return nil, false, model.Unauthorized("incomplete UI session headers")
+	}
+	unix, err := strconv.ParseInt(ts, 10, 64)
+	if err != nil {
+		return nil, false, model.Unauthorized("invalid UI timestamp")
+	}
+	t := time.Unix(unix, 0)
+	if d := time.Since(t); d > a.maxSkew || d < -a.maxSkew {
+		return nil, false, model.Unauthorized("UI timestamp outside allowed skew")
+	}
+	want := a.uiMAC(ts, r.Method, r.URL.Path, name, roleRaw, userID, body)
+	if !hmac.Equal([]byte(strings.ToLower(sig)), []byte(strings.ToLower(want))) {
+		return nil, false, model.Unauthorized("invalid UI signature")
+	}
+	role, err := model.ParseHumanRole(roleRaw)
+	if err != nil {
+		return nil, false, model.Unauthorized("invalid UI role")
+	}
+	return &Principal{Name: name, Role: role, UserID: model.ID(userID)}, true, nil
+}
+
+func (a *Authenticator) uiMAC(ts, method, path, name, role, userID string, body []byte) string {
+	sum := sha256.Sum256(body)
+	canonical := ts + "\n" + method + "\n" + path + "\n" + name + "\n" + role + "\n" + userID + "\n" + hex.EncodeToString(sum[:])
+	mac := hmac.New(sha256.New, a.uiKey)
+	_, _ = mac.Write([]byte(canonical))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
 func CanMutate(role model.Role) bool {
-	return role == model.RoleOperator || role == model.RoleAgent
+	return role == model.RoleAdministrator || role == model.RoleOperator || role == model.RoleAgent
 }
 
 func CanRead(role model.Role) bool {
-	return role == model.RoleOperator || role == model.RoleReadonly || role == model.RoleAgent
+	return role == model.RoleAdministrator || role == model.RoleOperator || role == model.RoleReadonly || role == model.RoleAgent
+}
+
+func CanManageTokens(role model.Role) bool {
+	return role == model.RoleAdministrator || role == model.RoleOperator
+}
+
+func CanManageUsers(role model.Role) bool {
+	return role == model.RoleAdministrator
 }
 
 func Sign(token, method, path string, body []byte, now time.Time) (ts, sig string) {

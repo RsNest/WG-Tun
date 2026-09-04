@@ -4,6 +4,8 @@ Stages 1–5 of the staged MVP are in tree. The items below are intentionally no
 
 ## Known gaps
 
+- Human Web UI accounts (password, administrator/operator/readonly, TOTP, recovery codes, EN/RU UI) are implemented. Foreign Node provisioning, provider installers, Path Checks, and the Route Wizard are not.
+
 - Postgres store implementation (interface is SQLite-only today).
 - mTLS agent↔controller (Bearer+HMAC is implemented instead).
 - Token revoke/rotate API and per-node binding (operator can mint `agent` tokens via `POST /api/v1/tokens` / `proxctl token add`; revoke is still missing). Do not reuse the bootstrap operator token on live agents.

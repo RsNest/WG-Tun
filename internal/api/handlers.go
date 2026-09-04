@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"proxyctl/internal/auth"
 	"proxyctl/internal/ident"
 	"proxyctl/internal/logging"
 	"proxyctl/internal/model"
@@ -37,8 +38,8 @@ func (s *Server) whoami(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) listTokens(w http.ResponseWriter, r *http.Request) {
 	p := PrincipalFrom(r.Context())
-	if p == nil || p.Role != model.RoleOperator {
-		writeErr(w, model.Forbidden("only operator can list tokens"))
+	if p == nil || !auth.CanManageTokens(p.Role) {
+		writeErr(w, model.Forbidden("only administrator or operator can list tokens"))
 		return
 	}
 	out, err := s.store.ListTokens(r.Context())
@@ -51,8 +52,8 @@ func (s *Server) listTokens(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) createToken(w http.ResponseWriter, r *http.Request) {
 	p := PrincipalFrom(r.Context())
-	if p == nil || p.Role != model.RoleOperator {
-		writeErr(w, model.Forbidden("only operator can mint tokens"))
+	if p == nil || !auth.CanManageTokens(p.Role) {
+		writeErr(w, model.Forbidden("only administrator or operator can mint tokens"))
 		return
 	}
 	var req model.TokenCreateRequest

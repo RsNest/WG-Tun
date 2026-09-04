@@ -1,45 +1,79 @@
 {{define "header"}}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{.Locale}}">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=1100">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{if .Title}}{{.Title}} · {{end}}proxyctl</title>
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/htmx.min.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
-<body>
-<a class="skip" href="#main">Skip to content</a>
-<div class="shell">
-  <header class="topbar">
+<body
+  data-i18n-refresh-fail="{{.Tr "js.refresh_failed"}}"
+  data-i18n-no-response="{{.Tr "js.controller_no_response"}}"
+  data-i18n-request-failed="{{.Tr "js.request_failed"}}"
+  data-i18n-session="{{.Tr "js.session_expired"}}"
+  data-i18n-forbidden="{{.Tr "js.forbidden"}}"
+  data-i18n-not-found="{{.Tr "js.not_found"}}"
+  data-i18n-conflict="{{.Tr "js.conflict"}}"
+  data-i18n-validation="{{.Tr "js.validation"}}"
+  data-i18n-controller="{{.Tr "js.controller_error"}}">
+<a class="skip" href="#main">{{.Tr "nav.skip"}}</a>
+<div class="app-shell">
+  {{if .Principal}}
+  <aside class="sidebar" aria-label="{{.Tr "nav.group.overview"}}">
     <div class="brand"><a href="/">proxyctl</a></div>
-    <div class="page-title">{{if .Title}}{{.Title}}{{else}}Operator console{{end}}</div>
-    {{if .Principal}}
-    <nav class="nav" aria-label="Primary">
-      <a href="/" {{if eq .Nav "dashboard"}}class="active" aria-current="page"{{end}}>Dashboard</a>
-      <a href="/nodes" {{if eq .Nav "nodes"}}class="active" aria-current="page"{{end}}>Nodes</a>
-      <a href="/backends" {{if eq .Nav "backends"}}class="active" aria-current="page"{{end}}>Backends</a>
-      <a href="/tunnels" {{if eq .Nav "tunnels"}}class="active" aria-current="page"{{end}}>Tunnels</a>
-      <a href="/mappings" {{if eq .Nav "mappings"}}class="active" aria-current="page"{{end}}>Mappings</a>
-      <a href="/sni-routes" {{if eq .Nav "sni"}}class="active" aria-current="page"{{end}}>SNI Routes</a>
-      <a href="/events" {{if eq .Nav "events"}}class="active" aria-current="page"{{end}}>Events</a>
+    <nav class="side-nav">
+      <div class="nav-group">
+        <div class="nav-group-label">{{.Tr "nav.group.overview"}}</div>
+        <a href="/" {{if eq .Nav "dashboard"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.dashboard"}}</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">{{.Tr "nav.group.infrastructure"}}</div>
+        <a href="/nodes" {{if eq .Nav "nodes"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.entry_nodes"}}</a>
+        <a href="/backends" {{if eq .Nav "backends"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.backends"}}</a>
+        <a href="/tunnels" {{if eq .Nav "tunnels"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.tunnels"}}</a>
+        <a href="/mappings" {{if eq .Nav "mappings"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.mappings"}}</a>
+        <a href="/sni-routes" {{if eq .Nav "sni"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.sni_routes"}}</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">{{.Tr "nav.group.monitoring"}}</div>
+        <a href="/events" {{if eq .Nav "events"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.events"}}</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">{{.Tr "nav.group.administration"}}</div>
+        {{if .CanAdmin}}<a href="/users" {{if eq .Nav "users"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.users"}}</a>{{end}}
+        <a href="/api-reference" {{if eq .Nav "apiref"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.api_reference"}}</a>
+        <a href="/settings" {{if eq .Nav "settings"}}class="active" aria-current="page"{{end}}>{{.Tr "nav.settings"}}</a>
+      </div>
     </nav>
-    <div class="who">
-      <span class="badge role-{{.Principal.Role}}">{{.Principal.Role}}</span>
-      <span>{{.Principal.Name}}</span>
-      <form class="inline-form" method="post" action="/logout"><button class="secondary" type="submit">Sign out</button></form>
-    </div>
-    {{end}}
-  </header>
-  <div id="hx-error" class="alert err" hidden role="status"></div>
-  {{if .FlashOK}}<div class="alert ok" role="status">{{.FlashOK}}</div>{{end}}
-  {{if .FlashErr}}<div class="alert err" role="alert">{{.FlashErr}}</div>{{end}}
-  <main id="main">
+  </aside>
+  {{end}}
+  <div class="workspace">
+    <header class="topbar">
+      <div class="page-title">{{if .Title}}{{.Title}}{{end}}</div>
+      <div class="who">
+        <form class="lang-switch" method="post" action="/locale" hx-post="/locale" hx-swap="none">
+          <input type="hidden" name="locale" value="{{if eq .Locale "ru"}}en{{else}}ru{{end}}">
+          <button class="secondary" type="submit">{{if eq .Locale "ru"}}{{.Tr "lang.en"}}{{else}}{{.Tr "lang.ru"}}{{end}}</button>
+        </form>
+        {{if .Principal}}
+        <span class="badge role-{{.Principal.Role}}">{{.Tr (printf "role.%s" .Principal.Role)}}</span>
+        <span>{{.Principal.Name}}</span>
+        <form class="inline-form" method="post" action="/logout"><button class="secondary" type="submit">{{.Tr "nav.sign_out"}}</button></form>
+        {{end}}
+      </div>
+    </header>
+    <div id="hx-error" class="alert err" hidden role="status"></div>
+    {{if .FlashOK}}<div class="alert ok" role="status">{{.FlashOK}}</div>{{end}}
+    {{if .FlashErr}}<div class="alert err" role="alert">{{.FlashErr}}</div>{{end}}
+    <main id="main">
 {{end}}
 
 {{define "footer"}}
-  </main>
+    </main>
+  </div>
 </div>
 </body>
 </html>
@@ -47,26 +81,120 @@
 
 {{define "login"}}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{.Locale}}">
 <head>
   <meta charset="utf-8">
-  <title>Sign in · proxyctl</title>
+  <title>{{.Tr "login.title"}} · proxyctl</title>
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
   <div class="login-wrap">
     <div class="login-card">
-      <h1>Sign in</h1>
-      <p>Paste an operator or readonly API token. It is stored only in an HTTP-only session cookie.</p>
-      {{if .FlashErr}}<div class="alert err" role="alert">{{.FlashErr}}</div>{{end}}
-      <form method="post" action="/login" autocomplete="off">
-        <div class="field">
-          <label for="token">API token</label>
-          <input id="token" type="password" name="token" required autofocus autocomplete="off">
-        </div>
-        <button type="submit">Continue</button>
+      <form class="lang-switch login-lang" method="post" action="/locale">
+        <input type="hidden" name="locale" value="{{if eq .Locale "ru"}}en{{else}}ru{{end}}">
+        <button class="secondary" type="submit">{{if eq .Locale "ru"}}{{.Tr "lang.en"}}{{else}}{{.Tr "lang.ru"}}{{end}}</button>
       </form>
-      <p class="hint">This UI binds to localhost by default. Do not expose it without the same network controls as the API.</p>
+      <h1>{{.Tr "login.title"}}</h1>
+      <p>{{.Tr "login.lead"}}</p>
+      {{if .FlashErr}}<div class="alert err" role="alert">{{.FlashErr}}</div>{{end}}
+      <form method="post" action="/login" autocomplete="username">
+        <div class="field">
+          <label for="username">{{.Tr "login.username"}}</label>
+          <input id="username" name="username" required autofocus autocomplete="username">
+        </div>
+        <div class="field">
+          <label for="password">{{.Tr "login.password"}}</label>
+          <input id="password" type="password" name="password" required autocomplete="current-password">
+        </div>
+        <button type="submit">{{.Tr "login.submit"}}</button>
+      </form>
+      <details class="token-login">
+        <summary>{{.Tr "login.token_toggle"}}</summary>
+        <p>{{.Tr "login.token_lead"}}</p>
+        <form method="post" action="/login" autocomplete="off">
+          <div class="field">
+            <label for="token">{{.Tr "login.token"}}</label>
+            <input id="token" type="password" name="token" required autocomplete="off">
+          </div>
+          <button type="submit">{{.Tr "login.token_submit"}}</button>
+        </form>
+      </details>
+      <p class="hint">{{.Tr "login.hint"}}</p>
+    </div>
+  </div>
+</body>
+</html>
+{{end}}
+
+{{define "setup"}}
+<!DOCTYPE html>
+<html lang="{{.Locale}}">
+<head>
+  <meta charset="utf-8">
+  <title>{{.Tr "setup.title"}} · proxyctl</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <form class="lang-switch login-lang" method="post" action="/locale">
+        <input type="hidden" name="locale" value="{{if eq .Locale "ru"}}en{{else}}ru{{end}}">
+        <button class="secondary" type="submit">{{if eq .Locale "ru"}}{{.Tr "lang.en"}}{{else}}{{.Tr "lang.ru"}}{{end}}</button>
+      </form>
+      <h1>{{.Tr "setup.title"}}</h1>
+      <p>{{.Tr "setup.lead"}}</p>
+      {{if .FlashErr}}<div class="alert err" role="alert">{{.FlashErr}}</div>{{end}}
+      <form method="post" action="/setup" autocomplete="off">
+        <div class="field">
+          <label for="setup-user">{{.Tr "setup.username"}}</label>
+          <input id="setup-user" name="username" required autofocus>
+        </div>
+        <div class="field">
+          <label for="setup-display">{{.Tr "setup.display_name"}}</label>
+          <input id="setup-display" name="display_name">
+        </div>
+        <div class="field">
+          <label for="setup-pass">{{.Tr "setup.password"}}</label>
+          <input id="setup-pass" type="password" name="password" required minlength="10" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label for="setup-pass2">{{.Tr "setup.password_confirm"}}</label>
+          <input id="setup-pass2" type="password" name="password_confirm" required minlength="10" autocomplete="new-password">
+        </div>
+        <button type="submit">{{.Tr "setup.submit"}}</button>
+      </form>
+      <p class="hint">{{.Tr "setup.hint"}}</p>
+    </div>
+  </div>
+</body>
+</html>
+{{end}}
+
+{{define "mfa"}}
+<!DOCTYPE html>
+<html lang="{{.Locale}}">
+<head>
+  <meta charset="utf-8">
+  <title>{{.Tr "mfa.title"}} · proxyctl</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <h1>{{.Tr "mfa.title"}}</h1>
+      <p>{{.Tr "mfa.lead"}}</p>
+      {{if .FlashErr}}<div class="alert err" role="alert">{{.FlashErr}}</div>{{end}}
+      <form method="post" action="/login/mfa" autocomplete="one-time-code">
+        <div class="field">
+          <label for="mfa-code">{{.Tr "mfa.code"}}</label>
+          <input id="mfa-code" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="8" autofocus>
+        </div>
+        <div class="field">
+          <label for="mfa-recovery">{{.Tr "mfa.recovery"}}</label>
+          <input id="mfa-recovery" name="recovery" autocomplete="off">
+        </div>
+        <button type="submit">{{.Tr "mfa.submit"}}</button>
+      </form>
     </div>
   </div>
 </body>
@@ -75,11 +203,11 @@
 
 {{define "error"}}
 {{template "header" .}}
-<h1>{{if .Data.Title}}{{.Data.Title}}{{else}}Something went wrong{{end}}</h1>
+<h1>{{if .Data.Title}}{{.Data.Title}}{{else}}{{.Tr "error.something_wrong"}}{{end}}</h1>
 <div class="alert {{if .Data.Kind}}{{.Data.Kind}}{{else}}err{{end}}" role="alert">
-  {{if .Data.Message}}{{.Data.Message}}{{else if .FlashErr}}{{.FlashErr}}{{else}}The controller API request failed.{{end}}
+  {{if .Data.Message}}{{.Data.Message}}{{else if .FlashErr}}{{.FlashErr}}{{else}}{{.Tr "error.api_failed"}}{{end}}
 </div>
-<p class="lead"><a href="/">Back to dashboard</a></p>
+<p class="lead"><a href="/">{{.Tr "error.back"}}</a></p>
 {{template "footer" .}}
 {{end}}
 
@@ -103,4 +231,11 @@
     </div>
   {{end}}
 </div>
+{{end}}
+
+{{define "status-chip"}}
+<span class="status-chip">
+  <span class="badge {{.StatusClass}}">{{$.Tr (printf "status.%s" .Status)}}</span>
+  {{if .ReasonKey}}<span class="status-reason">{{$.Tr .ReasonKey}}</span>{{end}}
+</span>
 {{end}}

@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 
+	"proxyctl/internal/auth"
 	"proxyctl/internal/client"
 	"proxyctl/internal/model"
 )
@@ -37,6 +38,7 @@ type API interface {
 	Apply(ctx context.Context, nodeID string, dryRun bool) (*model.ApplyResult, error)
 	Failback(ctx context.Context, nodeID, backend string) error
 	ListEvents(ctx context.Context, query string) ([]model.AuditEvent, error)
+	ListTokens(ctx context.Context) ([]model.Token, error)
 }
 
 type liveAPI struct {
@@ -119,9 +121,14 @@ func (a *liveAPI) Failback(ctx context.Context, nodeID, backend string) error {
 func (a *liveAPI) ListEvents(ctx context.Context, query string) ([]model.AuditEvent, error) {
 	return a.c.ListEvents(ctx, query)
 }
+func (a *liveAPI) ListTokens(ctx context.Context) ([]model.Token, error) {
+	return a.c.ListTokens(ctx)
+}
 
 type loopback struct {
-	h http.Handler
+	h    http.Handler
+	auth *auth.Authenticator
+	sess *session
 }
 
 func (t *loopback) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -131,6 +138,9 @@ func (t *loopback) RoundTrip(req *http.Request) (*http.Response, error) {
 	if req.RemoteAddr == "" {
 		req = req.Clone(req.Context())
 		req.RemoteAddr = "127.0.0.1:0"
+	}
+	if t.auth != nil && t.sess != nil && t.sess.Token == "" && t.sess.Name != "" && !t.sess.MFAPending {
+		t.auth.SignUI(req, t.sess.Name, t.sess.Role, t.sess.UserID)
 	}
 	rec := httptest.NewRecorder()
 	t.h.ServeHTTP(rec, req)

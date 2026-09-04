@@ -584,3 +584,10 @@ func TestReadonlyRejectsWritesButCanReadPlan(t *testing.T) {
 		t.Fatalf("agent may GET /plan: %v", err)
 	}
 }
+
+func TestUsersAPIOperatorForbidden(t *testing.T) {
+	c, _, _ := setup(t)
+	if _, err := c.ListUsers(context.Background()); err == nil {
+		t.Fatal("operator token must not list human users")
+	}
+}

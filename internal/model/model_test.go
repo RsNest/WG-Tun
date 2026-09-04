@@ -49,6 +49,13 @@ func TestParseRole(t *testing.T) {
 	if _, err := model.ParseRole("nope"); err == nil {
 		t.Fatal("expected error")
 	}
+	if _, err := model.ParseRole("administrator"); err == nil {
+		t.Fatal("administrator is not an API token role")
+	}
+	hr, err := model.ParseHumanRole("administrator")
+	if err != nil || hr != model.RoleAdministrator {
+		t.Fatalf("%v %v", hr, err)
+	}
 }
 
 func TestSniRouteValidate(t *testing.T) {

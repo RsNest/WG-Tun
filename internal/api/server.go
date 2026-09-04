@@ -26,26 +26,28 @@ type Capabilities struct {
 }
 
 type Server struct {
-	cfg   *config.ControllerConfig
-	store store.Store
-	auth  *auth.Authenticator
-	log   *logging.Logger
-	cap   Capabilities
-	ready bool
-	mu    sync.RWMutex
-	limit *limiter
-	now   func() time.Time
+	cfg      *config.ControllerConfig
+	store    store.Store
+	auth     *auth.Authenticator
+	accounts *auth.Accounts
+	log      *logging.Logger
+	cap      Capabilities
+	ready    bool
+	mu       sync.RWMutex
+	limit    *limiter
+	now      func() time.Time
 }
 
 func New(cfg *config.ControllerConfig, st store.Store, a *auth.Authenticator, log *logging.Logger, cap Capabilities) *Server {
 	return &Server{
-		cfg:   cfg,
-		store: st,
-		auth:  a,
-		log:   log,
-		cap:   cap,
-		limit: newLimiter(cfg.RateLimit.MutatingRPS, cfg.RateLimit.Burst),
-		now:   time.Now,
+		cfg:      cfg,
+		store:    st,
+		auth:     a,
+		accounts: auth.NewAccounts(st),
+		log:      log,
+		cap:      cap,
+		limit:    newLimiter(cfg.RateLimit.MutatingRPS, cfg.RateLimit.Burst),
+		now:      time.Now,
 	}
 }
 
@@ -70,6 +72,15 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/whoami", s.authn(s.whoami, false))
 	mux.HandleFunc("GET /api/v1/tokens", s.authn(s.listTokens, false))
 	mux.HandleFunc("POST /api/v1/tokens", s.authn(s.createToken, true))
+
+	mux.HandleFunc("GET /api/v1/users", s.authn(s.listUsers, false))
+	mux.HandleFunc("POST /api/v1/users", s.authn(s.createUser, true))
+	mux.HandleFunc("GET /api/v1/users/{id}", s.authn(s.getUser, false))
+	mux.HandleFunc("PATCH /api/v1/users/{id}", s.authn(s.patchUser, false))
+	mux.HandleFunc("POST /api/v1/users/{id}/totp/begin", s.authn(s.beginTOTP, false))
+	mux.HandleFunc("POST /api/v1/users/{id}/totp/confirm", s.authn(s.confirmTOTP, false))
+	mux.HandleFunc("POST /api/v1/users/{id}/totp/disable", s.authn(s.disableTOTP, false))
+	mux.HandleFunc("POST /api/v1/users/{id}/recovery-codes", s.authn(s.rotateRecovery, false))
 
 	mux.HandleFunc("GET /api/v1/nodes", s.authn(s.listNodes, false))
 	mux.HandleFunc("POST /api/v1/nodes", s.authn(s.createNode, true))

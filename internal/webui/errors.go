@@ -7,58 +7,61 @@ import (
 
 	"proxyctl/internal/logging"
 	"proxyctl/internal/model"
+	"proxyctl/internal/webui/i18n"
 )
 
 type alertView struct {
-	Kind    string
-	Title   string
-	Message string
+	Kind       string
+	Title      string
+	Message    string
+	TitleKey   string
+	MessageKey string
 }
 
 func classifyUIError(err error) (status int, a alertView) {
 	if err == nil {
-		return http.StatusInternalServerError, alertView{Kind: "internal", Title: "Controller error", Message: "The controller could not complete this request."}
+		return http.StatusInternalServerError, alertView{Kind: "internal", TitleKey: "error.controller_title", MessageKey: "error.controller"}
 	}
 	var ce *model.CodedError
 	if errors.As(err, &ce) && ce != nil {
 		msg := safeOperatorMessage(ce.Message)
 		switch ce.Code {
 		case "UNAUTHORIZED":
-			return http.StatusUnauthorized, alertView{Kind: "unauthorized", Title: "Session expired", Message: "Sign in again to continue."}
+			return http.StatusUnauthorized, alertView{Kind: "unauthorized", TitleKey: "error.session_title", MessageKey: "error.session_expired"}
 		case "FORBIDDEN":
-			return http.StatusForbidden, alertView{Kind: "forbidden", Title: "Not allowed", Message: firstNonEmpty(msg, "This action requires the operator role.")}
+			return http.StatusForbidden, alertView{Kind: "forbidden", TitleKey: "error.not_allowed_title", MessageKey: "error.not_allowed", Message: msg}
 		case "NOT_FOUND":
-			return http.StatusNotFound, alertView{Kind: "notfound", Title: "Not found", Message: firstNonEmpty(msg, "The requested resource was not found.")}
+			return http.StatusNotFound, alertView{Kind: "notfound", TitleKey: "error.not_found_title", MessageKey: "error.not_found", Message: msg}
 		case "CONFLICT":
-			return http.StatusConflict, alertView{Kind: "conflict", Title: "Conflict", Message: firstNonEmpty(msg, "The controller reported a conflict.")}
+			return http.StatusConflict, alertView{Kind: "conflict", TitleKey: "error.conflict_title", MessageKey: "error.conflict", Message: msg}
 		case "VALIDATION":
-			return http.StatusBadRequest, alertView{Kind: "validation", Title: "Invalid request", Message: firstNonEmpty(msg, "The submitted values were not accepted.")}
+			return http.StatusBadRequest, alertView{Kind: "validation", TitleKey: "error.invalid_title", MessageKey: "error.invalid", Message: msg}
 		case "UNAVAILABLE":
-			return http.StatusServiceUnavailable, alertView{Kind: "unavailable", Title: "Controller unavailable", Message: firstNonEmpty(msg, "The controller is not ready.")}
+			return http.StatusServiceUnavailable, alertView{Kind: "unavailable", TitleKey: "error.unavailable_title", MessageKey: "error.unavailable", Message: msg}
 		case "NOT_IMPLEMENTED":
-			return http.StatusNotImplemented, alertView{Kind: "unavailable", Title: "Not available", Message: firstNonEmpty(msg, "This action is not enabled on this controller.")}
+			return http.StatusNotImplemented, alertView{Kind: "unavailable", TitleKey: "error.not_implemented_title", MessageKey: "error.not_implemented", Message: msg}
 		case "RATE_LIMIT":
-			return http.StatusTooManyRequests, alertView{Kind: "warning", Title: "Too many requests", Message: firstNonEmpty(msg, "Wait a moment and retry.")}
+			return http.StatusTooManyRequests, alertView{Kind: "warning", TitleKey: "error.rate_title", MessageKey: "error.rate_limit", Message: msg}
 		default:
-			return http.StatusInternalServerError, alertView{Kind: "internal", Title: "Controller error", Message: "The controller could not complete this request."}
+			return http.StatusInternalServerError, alertView{Kind: "internal", TitleKey: "error.controller_title", MessageKey: "error.controller"}
 		}
 	}
 	low := strings.ToLower(err.Error())
 	switch {
 	case strings.Contains(low, "unauthorized") || strings.Contains(low, "unauthorised"):
-		return http.StatusUnauthorized, alertView{Kind: "unauthorized", Title: "Session expired", Message: "Sign in again to continue."}
+		return http.StatusUnauthorized, alertView{Kind: "unauthorized", TitleKey: "error.session_title", MessageKey: "error.session_expired"}
 	case strings.Contains(low, "forbidden"):
-		return http.StatusForbidden, alertView{Kind: "forbidden", Title: "Not allowed", Message: "This action requires the operator role."}
+		return http.StatusForbidden, alertView{Kind: "forbidden", TitleKey: "error.not_allowed_title", MessageKey: "error.not_allowed"}
 	case strings.Contains(low, "not found"):
-		return http.StatusNotFound, alertView{Kind: "notfound", Title: "Not found", Message: "The requested resource was not found."}
+		return http.StatusNotFound, alertView{Kind: "notfound", TitleKey: "error.not_found_title", MessageKey: "error.not_found"}
 	case strings.Contains(low, "conflict"):
-		return http.StatusConflict, alertView{Kind: "conflict", Title: "Conflict", Message: safeOperatorMessage(err.Error())}
+		return http.StatusConflict, alertView{Kind: "conflict", TitleKey: "error.conflict_title", MessageKey: "error.conflict", Message: safeOperatorMessage(err.Error())}
 	case strings.Contains(low, "validat"):
-		return http.StatusBadRequest, alertView{Kind: "validation", Title: "Invalid request", Message: safeOperatorMessage(err.Error())}
+		return http.StatusBadRequest, alertView{Kind: "validation", TitleKey: "error.invalid_title", MessageKey: "error.invalid", Message: safeOperatorMessage(err.Error())}
 	case strings.Contains(low, "connection refused") || strings.Contains(low, "timeout") || strings.Contains(low, "unavailable"):
-		return http.StatusBadGateway, alertView{Kind: "unavailable", Title: "API unavailable", Message: "The controller API did not respond."}
+		return http.StatusBadGateway, alertView{Kind: "unavailable", TitleKey: "error.api_title", MessageKey: "error.api_unavailable"}
 	default:
-		return http.StatusBadGateway, alertView{Kind: "unavailable", Title: "API unavailable", Message: "The controller API request failed."}
+		return http.StatusBadGateway, alertView{Kind: "unavailable", TitleKey: "error.api_title", MessageKey: "error.api_failed"}
 	}
 }
 
@@ -77,8 +80,23 @@ func safeOperatorMessage(msg string) string {
 	return strings.TrimSpace(msg)
 }
 
+func (a alertView) resolve(locale string) alertView {
+	if a.Title == "" && a.TitleKey != "" {
+		a.Title = i18n.T(locale, a.TitleKey)
+	}
+	if a.Message == "" && a.MessageKey != "" {
+		a.Message = i18n.T(locale, a.MessageKey)
+	}
+	return a
+}
+
+func (s *Server) localizeAlert(r *http.Request, a alertView) alertView {
+	return a.resolve(s.locale(r))
+}
+
 func planViewFromError(err error) planView {
 	_, a := classifyUIError(err)
+	a = a.resolve("en")
 	view := planView{Error: a.Message, ErrorKind: a.Kind}
 	var ce *model.CodedError
 	if !errors.As(err, &ce) || ce == nil || ce.Code != "CONFLICT" || strings.TrimSpace(ce.Message) == "" {
