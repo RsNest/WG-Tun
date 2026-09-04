@@ -80,8 +80,20 @@ type PortMapping struct {
 }
 
 // MappingPatch is the body of PATCH /api/v1/mappings/{id}.
+// Omitted fields keep their stored values. enabled=false leaves the mapping in
+// inventory but omits it from desired-state.
 type MappingPatch struct {
-	Enabled *bool `json:"enabled"`
+	NodeID      *ID       `json:"node_id,omitempty"`
+	BackendID   *ID       `json:"backend_id,omitempty"`
+	Backend     *string   `json:"backend,omitempty"`
+	Protocol    *Protocol `json:"protocol,omitempty"`
+	PublicPort  *int      `json:"public_port,omitempty"`
+	BackendPort *int      `json:"backend_port,omitempty"`
+	Enabled     *bool     `json:"enabled,omitempty"`
+}
+
+func (p MappingPatch) Empty() bool {
+	return p.NodeID == nil && p.BackendID == nil && p.Backend == nil && p.Protocol == nil && p.PublicPort == nil && p.BackendPort == nil && p.Enabled == nil
 }
 
 // SniMatch is one hostname rule (or the default) inside an SniRoute.
@@ -309,6 +321,11 @@ type ApplyResult struct {
 	Applied bool   `json:"applied"`
 	Plan    string `json:"plan"`
 	Message string `json:"message,omitempty"`
+}
+
+// PlanView is GET /api/v1/nodes/{id}/plan: a read-only Diff of desired vs stored actual.
+type PlanView struct {
+	Plan string `json:"plan"`
 }
 
 // TunnelStatus is a controller-side view of tunnel health from last actual-state.

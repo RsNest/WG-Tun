@@ -95,6 +95,37 @@ func TestDisabledMappingOmittedFromDesired(t *testing.T) {
 	}
 }
 
+func TestEnabledMappingIncludedInDesired(t *testing.T) {
+	st, err := store.OpenSQLite(filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	ctx := context.Background()
+	n := &model.Node{ID: ident.New(), Name: "ru-edge-1", PublicIP: "203.0.113.10", CreatedAt: time.Now(), UpdatedAt: time.Now()}
+	if err := n.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.CreateNode(ctx, n); err != nil {
+		t.Fatal(err)
+	}
+	b := &model.Backend{ID: ident.New(), Name: "backend-a", NodeID: n.ID, Address: "10.200.1.2", CreatedAt: time.Now(), UpdatedAt: time.Now()}
+	if err := st.CreateBackend(ctx, b); err != nil {
+		t.Fatal(err)
+	}
+	m := &model.PortMapping{ID: ident.New(), NodeID: n.ID, BackendID: b.ID, Protocol: model.ProtoTCP, PublicPort: 443, BackendPort: 443, CreatedAt: time.Now(), UpdatedAt: time.Now()}
+	if err := st.CreateMapping(ctx, m); err != nil {
+		t.Fatal(err)
+	}
+	ds, err := st.DesiredState(ctx, n.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ds.Mappings) != 1 || ds.Mappings[0].ID != m.ID || !ds.Mappings[0].Enabled {
+		t.Fatalf("enabled mapping must appear in desired-state: %+v", ds.Mappings)
+	}
+}
+
 func TestMigrateIdempotent(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "t.db")
 	st, err := store.OpenSQLite(path)

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -418,6 +419,32 @@ func (s *Server) putActualState(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusAccepted, map[string]any{"status": "recorded"})
 }
 
+func (s *Server) computePlan(ctx context.Context, id model.ID) (reconcile.Plan, error) {
+	ds, err := s.store.DesiredState(ctx, id)
+	if err != nil {
+		return reconcile.Plan{}, err
+	}
+	actual := model.ActualState{NodeID: id}
+	if st, _, err := s.store.GetActualState(ctx, id); err == nil && st != nil {
+		actual = *st
+	}
+	return reconcile.Diff(*ds, actual), nil
+}
+
+func (s *Server) getPlan(w http.ResponseWriter, r *http.Request) {
+	id := model.ID(r.PathValue("id"))
+	plan, err := s.computePlan(r.Context(), id)
+	if err != nil {
+		if store.IsNotFound(err) {
+			writeErr(w, model.NotFound("node", string(id)))
+			return
+		}
+		writeErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, model.PlanView{Plan: plan.String()})
+}
+
 func (s *Server) apply(w http.ResponseWriter, r *http.Request) {
 	id := model.ID(r.PathValue("id"))
 	var req model.ApplyRequest
@@ -427,7 +454,7 @@ func (s *Server) apply(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	ds, err := s.store.DesiredState(r.Context(), id)
+	plan, err := s.computePlan(r.Context(), id)
 	if err != nil {
 		if store.IsNotFound(err) {
 			writeErr(w, model.NotFound("node", string(id)))
@@ -436,11 +463,6 @@ func (s *Server) apply(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, err)
 		return
 	}
-	actual := model.ActualState{NodeID: id}
-	if st, _, err := s.store.GetActualState(r.Context(), id); err == nil && st != nil {
-		actual = *st
-	}
-	plan := reconcile.Diff(*ds, actual)
 	if plan.HasConflicts() {
 		s.audit(r, "apply", "node", string(id), plan.String(), false)
 		writeErr(w, model.ErrConflict(plan.String()))
@@ -537,7 +559,7 @@ func (s *Server) getBackend(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, b)
 }
 
-func (s *Server) updateBackend(w http.ResponseWriter, r *http.Request) {
+func (s *Server) patchBackend(w http.ResponseWriter, r *http.Request) {
 	id := model.ID(r.PathValue("id"))
 	existing, err := s.store.GetBackend(r.Context(), id)
 	if err != nil {
@@ -555,8 +577,14 @@ func (s *Server) updateBackend(w http.ResponseWriter, r *http.Request) {
 	}
 	b.ID = existing.ID
 	b.CreatedAt = existing.CreatedAt
+	if b.Name == "" {
+		b.Name = existing.Name
+	}
 	if b.NodeID == "" {
 		b.NodeID = existing.NodeID
+	}
+	if b.Address == "" {
+		b.Address = existing.Address
 	}
 	if err := b.Validate(); err != nil {
 		writeErr(w, err)
@@ -580,21 +608,7 @@ func (s *Server) updateBackend(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, b)
 }
 
-func (s *Server) getMapping(w http.ResponseWriter, r *http.Request) {
-	id := model.ID(r.PathValue("id"))
-	m, err := s.store.GetMapping(r.Context(), id)
-	if err != nil {
-		if store.IsNotFound(err) {
-			writeErr(w, model.NotFound("mapping", string(id)))
-			return
-		}
-		writeErr(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, m)
-}
-
-func (s *Server) updateMapping(w http.ResponseWriter, r *http.Request) {
+func (s *Server) patchMapping(w http.ResponseWriter, r *http.Request) {
 	id := model.ID(r.PathValue("id"))
 	existing, err := s.store.GetMapping(r.Context(), id)
 	if err != nil {
@@ -605,35 +619,44 @@ func (s *Server) updateMapping(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, err)
 		return
 	}
-	var m model.PortMapping
-	var raw struct {
-		NodeID      model.ID       `json:"node_id"`
-		BackendID   model.ID       `json:"backend_id"`
-		Protocol    model.Protocol `json:"protocol"`
-		PublicPort  int            `json:"public_port"`
-		BackendPort int            `json:"backend_port"`
-		Enabled     *bool          `json:"enabled"`
-	}
-	if err := decodeJSON(r, &raw); err != nil {
+	var patch model.MappingPatch
+	if err := decodeJSON(r, &patch); err != nil {
 		writeErr(w, err)
 		return
 	}
-	m.ID = existing.ID
-	m.CreatedAt = existing.CreatedAt
-	m.NodeID = raw.NodeID
-	m.BackendID = raw.BackendID
-	m.Protocol = raw.Protocol
-	m.PublicPort = raw.PublicPort
-	m.BackendPort = raw.BackendPort
-	m.Enabled = existing.Enabled
-	if raw.Enabled != nil {
-		m.Enabled = *raw.Enabled
+	if patch.Empty() {
+		writeErr(w, model.Validation("at least one mapping field is required"))
+		return
 	}
-	if m.NodeID == "" {
-		m.NodeID = existing.NodeID
+	m := *existing
+	if patch.NodeID != nil && *patch.NodeID != "" {
+		m.NodeID = *patch.NodeID
 	}
-	if m.BackendID == "" {
-		m.BackendID = existing.BackendID
+	if patch.BackendID != nil && *patch.BackendID != "" {
+		m.BackendID = *patch.BackendID
+	}
+	if patch.Backend != nil && strings.TrimSpace(*patch.Backend) != "" {
+		b, err := s.store.GetBackendByName(r.Context(), strings.ToLower(strings.TrimSpace(*patch.Backend)))
+		if err != nil {
+			writeErr(w, model.NotFound("backend", strings.TrimSpace(*patch.Backend)))
+			return
+		}
+		m.BackendID = b.ID
+		if m.NodeID == "" {
+			m.NodeID = b.NodeID
+		}
+	}
+	if patch.Protocol != nil {
+		m.Protocol = *patch.Protocol
+	}
+	if patch.PublicPort != nil {
+		m.PublicPort = *patch.PublicPort
+	}
+	if patch.BackendPort != nil {
+		m.BackendPort = *patch.BackendPort
+	}
+	if patch.Enabled != nil {
+		m.Enabled = *patch.Enabled
 	}
 	if err := s.resolveMappingRefs(r, &m); err != nil {
 		writeErr(w, err)
@@ -655,37 +678,6 @@ func (s *Server) updateMapping(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, "update", "mapping", string(m.ID), "", true)
 	writeJSON(w, http.StatusOK, m)
-}
-
-func (s *Server) patchMapping(w http.ResponseWriter, r *http.Request) {
-	id := model.ID(r.PathValue("id"))
-	existing, err := s.store.GetMapping(r.Context(), id)
-	if err != nil {
-		if store.IsNotFound(err) {
-			writeErr(w, model.NotFound("mapping", string(id)))
-			return
-		}
-		writeErr(w, err)
-		return
-	}
-	var patch model.MappingPatch
-	if err := decodeJSON(r, &patch); err != nil {
-		writeErr(w, err)
-		return
-	}
-	if patch.Enabled == nil {
-		writeErr(w, model.Validation("enabled is required"))
-		return
-	}
-	existing.Enabled = *patch.Enabled
-	existing.UpdatedAt = time.Now().UTC()
-	if err := s.store.UpdateMapping(r.Context(), existing); err != nil {
-		s.audit(r, "update", "mapping", string(id), err.Error(), false)
-		writeErr(w, err)
-		return
-	}
-	s.audit(r, "update", "mapping", string(id), "", true)
-	writeJSON(w, http.StatusOK, existing)
 }
 
 func (s *Server) listSni(w http.ResponseWriter, r *http.Request) {
@@ -714,7 +706,7 @@ func (s *Server) getSni(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, route)
 }
 
-func (s *Server) updateSni(w http.ResponseWriter, r *http.Request) {
+func (s *Server) patchSni(w http.ResponseWriter, r *http.Request) {
 	id := model.ID(r.PathValue("id"))
 	existing, err := s.store.GetSniRoute(r.Context(), id)
 	if err != nil {
@@ -734,6 +726,12 @@ func (s *Server) updateSni(w http.ResponseWriter, r *http.Request) {
 	route.CreatedAt = existing.CreatedAt
 	if route.NodeID == "" {
 		route.NodeID = existing.NodeID
+	}
+	if route.Listen == "" {
+		route.Listen = existing.Listen
+	}
+	if route.Matches == nil {
+		route.Matches = existing.Matches
 	}
 	if err := s.resolveSniBackends(r, &route); err != nil {
 		writeErr(w, err)
@@ -770,7 +768,7 @@ func (s *Server) getActualState(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, model.NodeActualState{Actual: st, Status: status})
 }
 
-func (s *Server) listAudit(w http.ResponseWriter, r *http.Request) {
+func (s *Server) listEvents(w http.ResponseWriter, r *http.Request) {
 	events, err := s.store.ListAudit(r.Context(), 500)
 	if err != nil {
 		writeErr(w, err)
@@ -779,7 +777,7 @@ func (s *Server) listAudit(w http.ResponseWriter, r *http.Request) {
 	if events == nil {
 		events = []model.AuditEvent{}
 	}
-	filtered, err := s.filterAudit(r, events)
+	filtered, err := s.filterEvents(r, events)
 	if err != nil {
 		writeErr(w, err)
 		return
@@ -787,7 +785,7 @@ func (s *Server) listAudit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, filtered)
 }
 
-func (s *Server) filterAudit(r *http.Request, events []model.AuditEvent) ([]model.AuditEvent, error) {
+func (s *Server) filterEvents(r *http.Request, events []model.AuditEvent) ([]model.AuditEvent, error) {
 	q := r.URL.Query()
 	ids := map[string]bool{}
 	if nodeQ := strings.TrimSpace(q.Get("node")); nodeQ != "" {
@@ -828,27 +826,30 @@ func (s *Server) filterAudit(r *http.Request, events []model.AuditEvent) ([]mode
 			ids[string(b.ID)] = true
 			ids[string(b.NodeID)] = true
 		} else {
-			// intersect with node filter: keep only this backend id (and still match node via other ids)
 			ids[string(b.ID)] = true
 		}
 	}
-	from, err := parseAuditTime(q.Get("from"), false)
+	since, err := parseEventTime(q.Get("since"), false)
 	if err != nil {
 		return nil, err
 	}
-	to, err := parseAuditTime(q.Get("to"), true)
+	until, err := parseEventTime(q.Get("until"), true)
 	if err != nil {
 		return nil, err
 	}
+	action := strings.TrimSpace(q.Get("action"))
 	out := make([]model.AuditEvent, 0, len(events))
 	for _, e := range events {
 		if len(ids) > 0 && !ids[e.ResourceID] {
 			continue
 		}
-		if !from.IsZero() && e.Timestamp.Before(from) {
+		if action != "" && e.Action != action {
 			continue
 		}
-		if !to.IsZero() && !e.Timestamp.Before(to) && !e.Timestamp.Equal(to) {
+		if !since.IsZero() && e.Timestamp.Before(since) {
+			continue
+		}
+		if !until.IsZero() && !e.Timestamp.Before(until) && !e.Timestamp.Equal(until) {
 			continue
 		}
 		out = append(out, e)
@@ -856,7 +857,7 @@ func (s *Server) filterAudit(r *http.Request, events []model.AuditEvent) ([]mode
 	return out, nil
 }
 
-func parseAuditTime(raw string, endOfDay bool) (time.Time, error) {
+func parseEventTime(raw string, endOfDay bool) (time.Time, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return time.Time{}, nil
@@ -871,5 +872,5 @@ func parseAuditTime(raw string, endOfDay bool) (time.Time, error) {
 		}
 		return t, nil
 	}
-	return time.Time{}, model.Validation("from/to must be YYYY-MM-DD or RFC3339")
+	return time.Time{}, model.Validation("since/until must be YYYY-MM-DD or RFC3339")
 }

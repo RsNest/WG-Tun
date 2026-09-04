@@ -77,18 +77,17 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/nodes/{id}/desired-state", s.authn(s.desiredState, false))
 	mux.HandleFunc("GET /api/v1/nodes/{id}/actual-state", s.authn(s.getActualState, false))
 	mux.HandleFunc("POST /api/v1/nodes/{id}/actual-state", s.authn(s.putActualState, true))
+	mux.HandleFunc("GET /api/v1/nodes/{id}/plan", s.authn(s.getPlan, false))
 	mux.HandleFunc("POST /api/v1/nodes/{id}/apply", s.authn(s.apply, true))
 	mux.HandleFunc("POST /api/v1/nodes/{id}/failback", s.authn(s.failback, true))
 
 	mux.HandleFunc("GET /api/v1/backends", s.authn(s.listBackends, false))
 	mux.HandleFunc("POST /api/v1/backends", s.authn(s.createBackend, true))
 	mux.HandleFunc("GET /api/v1/backends/{id}", s.authn(s.getBackend, false))
-	mux.HandleFunc("PUT /api/v1/backends/{id}", s.authn(s.updateBackend, true))
+	mux.HandleFunc("PATCH /api/v1/backends/{id}", s.authn(s.patchBackend, true))
 
 	mux.HandleFunc("GET /api/v1/mappings", s.authn(s.listMappings, false))
 	mux.HandleFunc("POST /api/v1/mappings", s.authn(s.createMapping, true))
-	mux.HandleFunc("GET /api/v1/mappings/{id}", s.authn(s.getMapping, false))
-	mux.HandleFunc("PUT /api/v1/mappings/{id}", s.authn(s.updateMapping, true))
 	mux.HandleFunc("PATCH /api/v1/mappings/{id}", s.authn(s.patchMapping, true))
 	mux.HandleFunc("DELETE /api/v1/mappings/{id}", s.authn(s.deleteMapping, true))
 
@@ -99,9 +98,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/sni-routes", s.authn(s.listSni, false))
 	mux.HandleFunc("POST /api/v1/sni-routes", s.authn(s.createSni, true))
 	mux.HandleFunc("GET /api/v1/sni-routes/{id}", s.authn(s.getSni, false))
-	mux.HandleFunc("PUT /api/v1/sni-routes/{id}", s.authn(s.updateSni, true))
+	mux.HandleFunc("PATCH /api/v1/sni-routes/{id}", s.authn(s.patchSni, true))
 
-	mux.HandleFunc("GET /api/v1/audit", s.authn(s.listAudit, false))
+	mux.HandleFunc("GET /api/v1/events", s.authn(s.listEvents, false))
 	return mux
 }
 

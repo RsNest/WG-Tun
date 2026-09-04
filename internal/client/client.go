@@ -165,6 +165,12 @@ func (c *Client) Apply(ctx context.Context, nodeID string, dryRun bool) (*model.
 	return &out, err
 }
 
+func (c *Client) Plan(ctx context.Context, nodeID string) (*model.PlanView, error) {
+	var out model.PlanView
+	err := c.Do(ctx, http.MethodGet, "/api/v1/nodes/"+nodeID+"/plan", nil, &out)
+	return &out, err
+}
+
 func (c *Client) Failback(ctx context.Context, nodeID, backend string) error {
 	return c.Do(ctx, http.MethodPost, "/api/v1/nodes/"+nodeID+"/failback", map[string]any{"backend": backend, "action": "fail_forward"}, nil)
 }
@@ -197,27 +203,15 @@ func (c *Client) GetBackend(ctx context.Context, id string) (*model.Backend, err
 	return &out, err
 }
 
-func (c *Client) UpdateBackend(ctx context.Context, b model.Backend) (*model.Backend, error) {
+func (c *Client) PatchBackend(ctx context.Context, b model.Backend) (*model.Backend, error) {
 	var out model.Backend
-	err := c.Do(ctx, http.MethodPut, "/api/v1/backends/"+string(b.ID), b, &out)
+	err := c.Do(ctx, http.MethodPatch, "/api/v1/backends/"+string(b.ID), b, &out)
 	return &out, err
 }
 
-func (c *Client) GetMapping(ctx context.Context, id string) (*model.PortMapping, error) {
+func (c *Client) PatchMapping(ctx context.Context, id string, patch model.MappingPatch) (*model.PortMapping, error) {
 	var out model.PortMapping
-	err := c.Do(ctx, http.MethodGet, "/api/v1/mappings/"+id, nil, &out)
-	return &out, err
-}
-
-func (c *Client) UpdateMapping(ctx context.Context, m model.PortMapping) (*model.PortMapping, error) {
-	var out model.PortMapping
-	err := c.Do(ctx, http.MethodPut, "/api/v1/mappings/"+string(m.ID), m, &out)
-	return &out, err
-}
-
-func (c *Client) PatchMapping(ctx context.Context, id string, enabled bool) (*model.PortMapping, error) {
-	var out model.PortMapping
-	err := c.Do(ctx, http.MethodPatch, "/api/v1/mappings/"+id, model.MappingPatch{Enabled: &enabled}, &out)
+	err := c.Do(ctx, http.MethodPatch, "/api/v1/mappings/"+id, patch, &out)
 	return &out, err
 }
 
@@ -233,9 +227,9 @@ func (c *Client) GetSniRoute(ctx context.Context, id string) (*model.SniRoute, e
 	return &out, err
 }
 
-func (c *Client) UpdateSniRoute(ctx context.Context, r model.SniRoute) (*model.SniRoute, error) {
+func (c *Client) PatchSniRoute(ctx context.Context, r model.SniRoute) (*model.SniRoute, error) {
 	var out model.SniRoute
-	err := c.Do(ctx, http.MethodPut, "/api/v1/sni-routes/"+string(r.ID), r, &out)
+	err := c.Do(ctx, http.MethodPatch, "/api/v1/sni-routes/"+string(r.ID), r, &out)
 	return &out, err
 }
 
@@ -245,8 +239,8 @@ func (c *Client) GetActualState(ctx context.Context, nodeID string) (*model.Node
 	return &out, err
 }
 
-func (c *Client) ListAudit(ctx context.Context, query string) ([]model.AuditEvent, error) {
-	path := "/api/v1/audit"
+func (c *Client) ListEvents(ctx context.Context, query string) ([]model.AuditEvent, error) {
+	path := "/api/v1/events"
 	if strings.TrimSpace(query) != "" {
 		if !strings.HasPrefix(query, "?") {
 			path += "?"
