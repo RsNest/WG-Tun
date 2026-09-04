@@ -2,16 +2,18 @@ package webui
 
 import (
 	"embed"
+	"fmt"
 	"html/template"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"proxyctl/internal/model"
 )
 
-//go:embed templates/*.html static/app.css static/htmx.min.js static/LICENSE-htmx.txt
+//go:embed templates/*.html static/app.css static/app.js static/htmx.min.js static/LICENSE-htmx.txt
 var content embed.FS
 
 type page struct {
@@ -27,13 +29,42 @@ type page struct {
 }
 
 func parseTemplates() (*template.Template, error) {
-	return template.New("").ParseFS(content, "templates/*.html")
+	return template.New("").Funcs(template.FuncMap{
+		"dash": func(s string) string {
+			if strings.TrimSpace(s) == "" {
+				return "—"
+			}
+			return s
+		},
+		"dict": func(values ...any) (map[string]any, error) {
+			if len(values)%2 != 0 {
+				return nil, fmt.Errorf("dict: odd argument count")
+			}
+			m := make(map[string]any, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("dict: keys must be strings")
+				}
+				m[key] = values[i+1]
+			}
+			return m, nil
+		},
+	}).ParseFS(content, "templates/*.html")
 }
 
 func (s *Server) render(w http.ResponseWriter, _ *http.Request, name string, p page) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := s.tmpl.ExecuteTemplate(w, name, p); err != nil {
 		http.Error(w, "template error", http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) renderStatus(w http.ResponseWriter, _ *http.Request, status int, name string, p page) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	if err := s.tmpl.ExecuteTemplate(w, name, p); err != nil {
+		return
 	}
 }
 
@@ -56,7 +87,7 @@ func fmtTime(t time.Time) string {
 
 func relTime(now, t time.Time) string {
 	if t.IsZero() {
-		return "never"
+		return "—"
 	}
 	d := now.UTC().Sub(t.UTC())
 	if d < 0 {

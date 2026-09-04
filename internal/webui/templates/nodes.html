@@ -4,20 +4,22 @@
 <p class="lead">Edge boxes on the RU side. DNS for customer domains should point at a node’s public IP.</p>
 <div class="panel">
   {{if not .Data}}
-    <p class="empty">No nodes.</p>
+    <p class="empty">No nodes configured yet.</p>
   {{else}}
-  <table>
+  <div class="table-wrap">
+  <table class="data">
     <thead><tr><th>Name</th><th>Public IP</th><th>ID</th></tr></thead>
     <tbody>
     {{range .Data}}
       <tr>
         <td><a href="/nodes/{{.ID}}">{{.Name}}</a></td>
-        <td class="mono">{{.PublicIP}}</td>
+        <td class="mono">{{dash .PublicIP}}</td>
         <td class="mono muted">{{.ID}}</td>
       </tr>
     {{end}}
     </tbody>
   </table>
+  </div>
   {{end}}
 </div>
 {{template "footer" .}}
@@ -29,50 +31,74 @@
 {{$card := .Data.Card}}
 {{$cat := .Data.Catalog}}
 <h1>{{$n.Name}}</h1>
-<p class="lead mono">{{$n.PublicIP}} · {{$n.ID}}</p>
-<p><span class="badge {{$card.StatusClass}}">{{$card.Status}}</span> <span class="transport">{{$card.Transport}}</span></p>
+<p class="lead">Node diagnostic view: inventory, last reported actual state, and the current reconcile plan.</p>
 
-<div class="actions">
-  <button type="button" hx-get="/nodes/{{$n.ID}}/plan" hx-target="#plan" hx-swap="innerHTML">Plan preview</button>
-  {{if .CanWrite}}
-    {{if .LiveApply}}
-  <button type="button" class="secondary" hx-post="/nodes/{{$n.ID}}/apply" hx-target="#plan" hx-swap="innerHTML">Apply</button>
-    {{else}}
-  <button type="button" class="secondary" disabled>Apply</button>
-  <p class="muted">Live apply is not enabled on this controller.</p>
+<section class="panel" aria-labelledby="overview-h">
+  <h2 id="overview-h">Overview</h2>
+  <p>
+    <span class="badge {{$card.StatusClass}}">{{$card.Status}}</span>
+    <span class="transport">{{dash $card.Transport}}</span>
+  </p>
+  <dl class="meta">
+    <dt>Name</dt><dd>{{$n.Name}}</dd>
+    <dt>Public IP</dt><dd>{{dash $n.PublicIP}}</dd>
+    <dt>Management address</dt><dd>{{dash .Data.MgmtAddr}}</dd>
+    <dt>Labels</dt><dd>{{dash .Data.Labels}}</dd>
+    <dt>Node state</dt><dd>{{$card.Status}}</dd>
+    <dt>Agent status</dt><dd>{{dash $card.AgentStatus}}</dd>
+    <dt>Current transport</dt><dd class="transport">{{dash $card.Transport}}</dd>
+    <dt>Last reconcile</dt><dd>{{dash $card.LastReconcile}}</dd>
+  </dl>
+  {{if not $card.AgentReported}}<p class="hint">Agent has not reported actual state yet.</p>{{end}}
+</section>
+
+<section class="panel" aria-labelledby="plan-h">
+  <h2 id="plan-h">Plan</h2>
+  <p class="panel-help">Read-only difference between desired state and last stored actual state. This does not write an audit event.</p>
+  <div class="actions">
+    <button type="button" hx-get="/nodes/{{$n.ID}}/plan" hx-target="#plan" hx-swap="outerHTML" hx-disabled-elt="this">Refresh plan</button>
+    {{if .CanWrite}}
+      <button type="button" class="secondary" hx-post="/nodes/{{$n.ID}}/dry-run" hx-target="#plan" hx-swap="outerHTML" hx-disabled-elt="this">Run audited dry-run</button>
+      {{if .LiveApply}}
+      <button type="button" class="secondary" hx-post="/nodes/{{$n.ID}}/apply" hx-target="#plan" hx-swap="outerHTML" hx-disabled-elt="this">Apply</button>
+      {{else}}
+      <button type="button" class="secondary" disabled>Apply</button>
+      <p class="hint">Live apply is not enabled on this controller.</p>
+      {{end}}
     {{end}}
-  {{end}}
-</div>
+  </div>
+  {{template "plan" (dict "Data" .Data.Plan)}}
+</section>
 
-<div class="panel">
-  <h2>Desired vs actual</h2>
-  <div id="plan"><pre class="plan">{{.Data.Plan}}</pre></div>
-</div>
-
-<div class="panel">
-  <h2>Tunnels</h2>
-  {{if not .Data.Tunnels}}<p class="empty">None.</p>{{else}}
-  <table>
-    <thead><tr><th>Type</th><th>Interface</th><th>Backend</th><th>Handshake</th><th>RX / TX</th></tr></thead>
+<section class="panel" aria-labelledby="tunnels-h">
+  <h2 id="tunnels-h">Tunnels</h2>
+  {{if not .Data.Tunnels}}<p class="empty">No tunnels configured for this node.</p>{{else}}
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>Type</th><th>Backend</th><th>Interface</th><th>Endpoint</th><th>Handshake</th><th>RX / TX</th><th>Priority / status</th></tr></thead>
     <tbody>
     {{range .Data.Tunnels}}
       <tr>
         <td class="mono">{{.Type}}</td>
-        <td class="mono">{{.Interface}}</td>
         <td>{{.Backend}}</td>
-        <td class="mono">{{.Handshake}}</td>
-        <td class="mono">{{.Rx}} / {{.Tx}}</td>
+        <td class="mono">{{dash .Interface}}</td>
+        <td class="mono">{{dash .Endpoint}}</td>
+        <td class="mono">{{dash .Handshake}}</td>
+        <td class="mono">{{dash .Rx}} / {{dash .Tx}}</td>
+        <td><span class="badge {{.StatusClass}}">{{.Status}}</span><span class="cell-sub">priority {{.Priority}}</span></td>
       </tr>
     {{end}}
     </tbody>
   </table>
+  </div>
   {{end}}
-</div>
+</section>
 
-<div class="panel">
-  <h2>Mappings</h2>
-  {{if not .Data.Mappings}}<p class="empty">None.</p>{{else}}
-  <table>
+<section class="panel" aria-labelledby="maps-h">
+  <h2 id="maps-h">Mappings</h2>
+  {{if not .Data.Mappings}}<p class="empty">No mappings configured for this node.</p>{{else}}
+  <div class="table-wrap">
+  <table class="data">
     <thead><tr><th>Proto</th><th>Public</th><th>Backend</th><th>Port</th><th>Enabled</th></tr></thead>
     <tbody>
     {{range .Data.Mappings}}
@@ -81,18 +107,20 @@
         <td class="mono">{{.PublicPort}}</td>
         <td>{{$cat.BackendName .BackendID}}</td>
         <td class="mono">{{.BackendPort}}</td>
-        <td>{{if .Enabled}}yes{{else}}no{{end}}</td>
+        <td>{{if .Enabled}}<span class="badge status-healthy">enabled</span>{{else}}<span class="badge status-disabled">disabled</span>{{end}}</td>
       </tr>
     {{end}}
     </tbody>
   </table>
+  </div>
   {{end}}
-</div>
+</section>
 
-<div class="panel">
-  <h2>SNI routes</h2>
-  {{if not .Data.Sni}}<p class="empty">None.</p>{{else}}
-  <table>
+<section class="panel" aria-labelledby="sni-h">
+  <h2 id="sni-h">SNI routes</h2>
+  {{if not .Data.Sni}}<p class="empty">No SNI routes configured for this node.</p>{{else}}
+  <div class="table-wrap">
+  <table class="data">
     <thead><tr><th>Listen</th><th>Match</th><th>Backend</th><th>Priority</th></tr></thead>
     <tbody>
     {{range .Data.Sni}}
@@ -105,24 +133,26 @@
     {{end}}
     </tbody>
   </table>
+  </div>
   {{end}}
-</div>
+</section>
 
 {{if and .CanWrite .Data.CanFailback}}
-<div class="panel">
-  <h2>Failback</h2>
-  <p class="muted">Requests Failback: SSH_PRIMARY → WG_PRIMARY. Confirm because this is a transport cutover.</p>
-  <form method="post" action="/nodes/{{$n.ID}}/failback" hx-confirm="Request Failback for this node? This transitions SSH_PRIMARY to WG_PRIMARY.">
-    <label>Backend
-      <select name="backend" required>
+<section class="panel" aria-labelledby="failback-h">
+  <h2 id="failback-h">Failback</h2>
+  <p class="panel-help">Failback switches this node from SSH fallback (SSH_PRIMARY) back to WireGuard (WG_PRIMARY).</p>
+  <form method="post" action="/nodes/{{$n.ID}}/failback" hx-post="/nodes/{{$n.ID}}/failback" hx-swap="none" hx-confirm="Switch this node from SSH fallback back to WireGuard?" hx-disabled-elt="find button">
+    <div class="field" style="max-width:280px">
+      <label for="failback-backend">Backend</label>
+      <select id="failback-backend" name="backend" required>
         {{range .Data.Failback}}
           <option value="{{.Name}}">{{.Name}}</option>
         {{end}}
       </select>
-    </label>
+    </div>
     <p><button class="danger" type="submit">Failback</button></p>
   </form>
-</div>
+</section>
 {{end}}
 {{template "footer" .}}
 {{end}}

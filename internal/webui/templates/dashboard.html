@@ -1,28 +1,33 @@
 {{define "dashboard"}}
 {{template "header" .}}
 <h1>Dashboard</h1>
-<p class="lead">RU-side edge nodes. Status refreshes every 8 seconds.</p>
+<p class="lead">RU-side edge nodes. Status refreshes about every 8 seconds.</p>
+<div id="dash-refresh-error" class="alert warning" hidden role="status">Could not refresh node status. Showing last successful data.</div>
 {{template "dashboard-cards" .}}
 {{template "footer" .}}
 {{end}}
 
 {{define "dashboard-cards"}}
-<div id="node-cards" class="cards" hx-get="/" hx-trigger="every 8s" hx-select="#node-cards" hx-target="this" hx-swap="outerHTML">
+<div id="node-cards" class="cards" hx-get="/" hx-trigger="every 8s" hx-select="#node-cards" hx-target="this" hx-swap="outerHTML" hx-sync="this:replace">
   {{if not .Data}}
-    <div class="panel empty">No nodes yet. Create one with <code>proxctl node add</code>.</div>
+    <p class="empty-panel">No nodes configured yet.</p>
   {{else}}
     {{range .Data}}
-    <article class="card">
+    <article class="card card-{{.StatusClass}}">
       <h2><a href="/nodes/{{.ID}}">{{.Name}}</a></h2>
-      <div class="ip">{{.PublicIP}}</div>
-      <span class="badge {{.StatusClass}}">{{.Status}}</span>
+      <div class="ip">{{dash .PublicIP}}</div>
+      <p>
+        <span class="badge {{.StatusClass}}">{{.Status}}</span>
+        {{if .Degraded}}<span class="badge status-degraded">degraded</span>{{end}}
+      </p>
       <dl class="meta" style="margin-top:12px">
-        <dt>Transport</dt><dd class="transport">{{.Transport}}</dd>
-        <dt>Handshake</dt><dd>{{.Handshake}}</dd>
-        <dt>Heartbeat</dt><dd>{{.Heartbeat}}</dd>
-        <dt>Reconcile</dt><dd>{{.LastReconcile}}</dd>
-        <dt>Mappings</dt><dd>{{.MappingCount}} active</dd>
+        <dt>Transport</dt><dd class="transport">{{dash .Transport}}</dd>
+        <dt>Agent</dt><dd>{{dash .AgentStatus}}</dd>
+        <dt>Handshake</dt><dd>{{dash .Handshake}}</dd>
+        <dt>Last reconcile</dt><dd>{{dash .LastReconcile}}</dd>
+        <dt>Active mappings</dt><dd>{{.MappingLabel}}</dd>
       </dl>
+      {{if not .AgentReported}}<p class="hint">Agent has not reported actual state yet.</p>{{end}}
     </article>
     {{end}}
   {{end}}

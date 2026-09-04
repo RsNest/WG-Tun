@@ -69,7 +69,10 @@ Default bind is your choice at start time; **use loopback**. This is an operator
 
 Readonly users can browse inventory, plan, status, and events. Apply / Failback / create / toggle / delete are hidden or disabled **and** rejected server-side.
 
-While LiveApply is disabled on this controller, the Apply button is disabled with the text `Live apply is not enabled on this controller.` Plan preview uses `GET /api/v1/nodes/{id}/plan` and does not create an apply audit event. `POST /apply` with `dry_run: true` remains a separate audited CLI/API operation.
+While LiveApply is disabled on this controller, the Apply button is disabled with the text `Live apply is not enabled on this controller.`
+
+- **Refresh plan** calls `GET /api/v1/nodes/{id}/plan` (read-only desired-vs-actual difference; no apply audit).
+- **Run audited dry-run** (operators only) calls `POST /api/v1/nodes/{id}/apply` with `{"dry_run": true}` and records `apply-dry-run`.
 
 ## Monitoring
 

@@ -24,13 +24,13 @@ Then browse `http://127.0.0.1:8444`. Sign in with an operator or readonly API to
 
 **Do not bind this to `0.0.0.0` without the same controls as the API.** It is a localhost operator console. There is no mTLS on the UI listener.
 
-Pages: dashboard (node cards, 8s HTMX poll), nodes (desired vs actual plan via `GET /api/v1/nodes/{id}/plan`, Failback for operators), backends, tunnels (WireGuard create; key **path** only), mappings (enable/disable via `PATCH /api/v1/mappings/{id}`), SNI routes, events (`GET /events` calls `GET /api/v1/events?node=&backend=&since=&until=&action=`).
+Pages: dashboard (node cards, ~8s HTMX poll; a failed poll keeps the last cards and shows a refresh error), nodes (diagnostic detail), backends, tunnels (WireGuard create; key **path** only), mappings (enable/disable via `PATCH /api/v1/mappings/{id}`), SNI routes, events (`GET /events` calls `GET /api/v1/events?node=&backend=&since=&until=&action=`).
 
-**Plan preview vs audited dry-run.** The UI Plan preview button calls `GET /api/v1/nodes/{id}/plan`: read-only Diff, no apply audit. `POST /api/v1/nodes/{id}/apply` with `{"dry_run": true}` remains a distinct operator/CLI operation that records `apply-dry-run`. Do not treat them as the same contract.
+**Refresh plan vs audited dry-run.** On the node page, **Refresh plan** calls `GET /api/v1/nodes/{id}/plan`: read-only Diff, no apply audit. **Run audited dry-run** (operators) calls `POST /api/v1/nodes/{id}/apply` with `{"dry_run": true}` and records `apply-dry-run`. Do not treat them as the same control or contract.
 
-**Apply while LiveApply is disabled.** This controller binary has `LiveApply` off. The UI Apply button is disabled and the node page shows `Live apply is not enabled on this controller.` Plan preview stays available. Live mutation remains agent-driven (`dry_run_only` on the agent).
+**Apply while LiveApply is disabled.** This controller binary has `LiveApply` off. The UI Apply button is disabled and the node page shows `Live apply is not enabled on this controller.` Refresh plan and audited dry-run stay available to the operator role. Live mutation remains agent-driven (`dry_run_only` on the agent).
 
-**Failback** is the explicit human-triggered transition `SSH_PRIMARY` → `WG_PRIMARY` (`POST /api/v1/nodes/{id}/failback`, HTTP 202). Confirm dialog in the UI.
+**Failback** is the explicit human-triggered transition `SSH_PRIMARY` → `WG_PRIMARY` (`POST /api/v1/nodes/{id}/failback`, HTTP 202). The control is shown only when the node is on SSH fallback. Confirm dialog: `Switch this node from SSH fallback back to WireGuard?`
 
 **Mapping `enabled`.** `true` means the mapping is in desired-state. `false` keeps it in inventory and omits it from desired-state; if it still exists on the node, the next plan contains the corresponding DELETE. Unchanged disabled state after convergence is `NO CHANGES`.
 

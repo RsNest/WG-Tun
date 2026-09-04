@@ -88,6 +88,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /nodes", s.requireSession(s.nodesList))
 	mux.HandleFunc("GET /nodes/{id}", s.requireSession(s.nodeDetail))
 	mux.HandleFunc("GET /nodes/{id}/plan", s.requireSession(s.nodePlan))
+	mux.HandleFunc("POST /nodes/{id}/dry-run", s.requireSession(s.nodeDryRun))
 	mux.HandleFunc("POST /nodes/{id}/apply", s.requireSession(s.nodeApply))
 	mux.HandleFunc("POST /nodes/{id}/failback", s.requireSession(s.nodeFailback))
 
@@ -182,6 +183,11 @@ func (s *Server) api(r *http.Request) API {
 func (s *Server) requireSession(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.sessionFrom(r) == nil {
+			if hx(r) {
+				w.Header().Set("HX-Redirect", "/login")
+				http.Error(w, "session expired", http.StatusUnauthorized)
+				return
+			}
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
@@ -199,8 +205,10 @@ func (s *Server) requireWrite(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func (s *Server) writeForbidden(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("HX-Request") == "true" {
-		http.Error(w, "readonly session cannot mutate", http.StatusForbidden)
+	if hx(r) {
+		s.renderStatus(w, r, http.StatusForbidden, "alert", page{Data: alertView{
+			Kind: "forbidden", Title: "Not allowed", Message: "This action requires the operator role.",
+		}})
 		return
 	}
 	http.Error(w, "forbidden: operator role required", http.StatusForbidden)

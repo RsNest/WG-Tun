@@ -7,35 +7,39 @@
   <title>{{if .Title}}{{.Title}} · {{end}}proxyctl</title>
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/app.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <div class="shell">
   <header class="topbar">
-    <div class="brand">
-      <strong>proxyctl</strong>
-      <span>edge operator console</span>
-    </div>
+    <div class="brand"><a href="/">proxyctl</a></div>
+    <div class="page-title">{{if .Title}}{{.Title}}{{else}}Operator console{{end}}</div>
     {{if .Principal}}
-    <nav class="nav">
-      <a href="/" {{if eq .Nav "dashboard"}}class="active"{{end}}>Dashboard</a>
-      <a href="/nodes" {{if eq .Nav "nodes"}}class="active"{{end}}>Nodes</a>
-      <a href="/backends" {{if eq .Nav "backends"}}class="active"{{end}}>Backends</a>
-      <a href="/tunnels" {{if eq .Nav "tunnels"}}class="active"{{end}}>Tunnels</a>
-      <a href="/mappings" {{if eq .Nav "mappings"}}class="active"{{end}}>Mappings</a>
-      <a href="/sni-routes" {{if eq .Nav "sni"}}class="active"{{end}}>SNI</a>
-      <a href="/events" {{if eq .Nav "events"}}class="active"{{end}}>Events</a>
+    <nav class="nav" aria-label="Primary">
+      <a href="/" {{if eq .Nav "dashboard"}}class="active" aria-current="page"{{end}}>Dashboard</a>
+      <a href="/nodes" {{if eq .Nav "nodes"}}class="active" aria-current="page"{{end}}>Nodes</a>
+      <a href="/backends" {{if eq .Nav "backends"}}class="active" aria-current="page"{{end}}>Backends</a>
+      <a href="/tunnels" {{if eq .Nav "tunnels"}}class="active" aria-current="page"{{end}}>Tunnels</a>
+      <a href="/mappings" {{if eq .Nav "mappings"}}class="active" aria-current="page"{{end}}>Mappings</a>
+      <a href="/sni-routes" {{if eq .Nav "sni"}}class="active" aria-current="page"{{end}}>SNI Routes</a>
+      <a href="/events" {{if eq .Nav "events"}}class="active" aria-current="page"{{end}}>Events</a>
     </nav>
     <div class="who">
-      <span>{{.Principal.Name}} · <code>{{.Principal.Role}}</code></span>
+      <span class="badge role-{{.Principal.Role}}">{{.Principal.Role}}</span>
+      <span>{{.Principal.Name}}</span>
       <form class="inline-form" method="post" action="/logout"><button class="secondary" type="submit">Sign out</button></form>
     </div>
     {{end}}
   </header>
-  {{if .FlashOK}}<div class="flash ok">{{.FlashOK}}</div>{{end}}
-  {{if .FlashErr}}<div class="flash err">{{.FlashErr}}</div>{{end}}
+  <div id="hx-error" class="alert err" hidden role="status"></div>
+  {{if .FlashOK}}<div class="alert ok" role="status">{{.FlashOK}}</div>{{end}}
+  {{if .FlashErr}}<div class="alert err" role="alert">{{.FlashErr}}</div>{{end}}
+  <main id="main">
 {{end}}
 
 {{define "footer"}}
+  </main>
 </div>
 </body>
 </html>
@@ -54,11 +58,12 @@
     <div class="login-card">
       <h1>Sign in</h1>
       <p>Paste an operator or readonly API token. It is stored only in an HTTP-only session cookie.</p>
-      {{if .FlashErr}}<div class="flash err">{{.FlashErr}}</div>{{end}}
+      {{if .FlashErr}}<div class="alert err" role="alert">{{.FlashErr}}</div>{{end}}
       <form method="post" action="/login" autocomplete="off">
-        <label>API token
-          <input type="password" name="token" required autofocus autocomplete="off">
-        </label>
+        <div class="field">
+          <label for="token">API token</label>
+          <input id="token" type="password" name="token" required autofocus autocomplete="off">
+        </div>
         <button type="submit">Continue</button>
       </form>
       <p class="hint">This UI binds to localhost by default. Do not expose it without the same network controls as the API.</p>
@@ -70,11 +75,32 @@
 
 {{define "error"}}
 {{template "header" .}}
-<h1>Something went wrong</h1>
-<p class="lead">{{if .FlashErr}}{{.FlashErr}}{{else}}The controller API request failed.{{end}}</p>
+<h1>{{if .Data.Title}}{{.Data.Title}}{{else}}Something went wrong{{end}}</h1>
+<div class="alert {{if .Data.Kind}}{{.Data.Kind}}{{else}}err{{end}}" role="alert">
+  {{if .Data.Message}}{{.Data.Message}}{{else if .FlashErr}}{{.FlashErr}}{{else}}The controller API request failed.{{end}}
+</div>
+<p class="lead"><a href="/">Back to dashboard</a></p>
 {{template "footer" .}}
 {{end}}
 
+{{define "alert"}}
+<div class="alert {{.Data.Kind}}" role="alert">
+  {{if .Data.Title}}<span class="alert-title">{{.Data.Title}}</span>{{end}}{{.Data.Message}}
+</div>
+{{end}}
+
 {{define "plan"}}
-<pre class="plan">{{.Data}}</pre>
+<div id="plan" class="plan-wrap">
+  {{if .Data.Notice}}<div class="alert ok" role="status">{{.Data.Notice}}</div>{{end}}
+  {{if .Data.Error}}<div class="alert {{if .Data.ErrorKind}}{{.Data.ErrorKind}}{{else}}err{{end}}" role="alert">{{.Data.Error}}</div>{{end}}
+  {{if .Data.NoChanges}}
+    <p class="plan-none" role="status">NO CHANGES</p>
+  {{else}}
+    <div class="plan" role="log" aria-label="Reconcile plan">
+      {{range .Data.Lines}}
+      <div class="plan-line plan-{{.Kind}}">{{.Text}}</div>
+      {{end}}
+    </div>
+  {{end}}
+</div>
 {{end}}

@@ -2,48 +2,64 @@
 {{template "header" .}}
 {{$f := .Data.Filter}}
 <h1>Events</h1>
-<p class="lead">Audit log from <code>GET /api/v1/events</code>. Filters are query parameters (<code>node</code>, <code>backend</code>, <code>since</code>, <code>until</code>, <code>action</code>) — bookmarkable, no client state.</p>
+<p class="lead">Controller audit log. Filters are sent to the API as query parameters and are bookmarkable.</p>
 
 <form class="filter" method="get" action="/events">
-  <label>Node
-    <select name="node">
+  <div class="field">
+    <label for="ev-node">Node</label>
+    <select id="ev-node" name="node">
       <option value="">any</option>
       {{range .Data.Nodes}}
         <option value="{{.Name}}" {{if eq $.Data.Filter.Node .Name}}selected{{end}}>{{.Name}}</option>
       {{end}}
     </select>
-  </label>
-  <label>Backend
-    <select name="backend">
+  </div>
+  <div class="field">
+    <label for="ev-backend">Backend</label>
+    <select id="ev-backend" name="backend">
       <option value="">any</option>
       {{range .Data.Backends}}
         <option value="{{.Name}}" {{if eq $.Data.Filter.Backend .Name}}selected{{end}}>{{.Name}}</option>
       {{end}}
     </select>
-  </label>
-  <label>Since <input type="date" name="since" value="{{$f.Since}}"></label>
-  <label>Until <input type="date" name="until" value="{{$f.Until}}"></label>
-  <label>Action <input name="action" value="{{$f.Action}}" placeholder="create"></label>
-  <button type="submit">Filter</button>
-  <a class="btn secondary" href="/events">Reset</a>
+  </div>
+  <div class="field">
+    <label for="ev-since">Since</label>
+    <input id="ev-since" type="date" name="since" value="{{$f.Since}}">
+  </div>
+  <div class="field">
+    <label for="ev-until">Until</label>
+    <input id="ev-until" type="date" name="until" value="{{$f.Until}}">
+  </div>
+  <div class="field">
+    <label for="ev-action">Action</label>
+    <input id="ev-action" name="action" value="{{$f.Action}}" placeholder="create">
+  </div>
+  <div class="filter-actions">
+    <button type="submit">Apply filters</button>
+    <a class="btn secondary" href="/events">Clear filters</a>
+  </div>
 </form>
 
 <div class="panel">
-  {{if not .Data.Events}}<p class="empty">No events.</p>{{else}}
-  <table>
-    <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Result</th></tr></thead>
+  {{if not .Data.Events}}<p class="empty">{{if .Data.FilterActive}}No events match these filters.{{else}}No events recorded yet.{{end}}</p>{{else}}
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Result</th><th>Detail</th></tr></thead>
     <tbody>
     {{range .Data.Events}}
       <tr>
-        <td class="mono">{{.Timestamp.UTC.Format "2006-01-02 15:04:05"}}</td>
+        <td class="mono">{{.When}}</td>
         <td>{{.Actor}}</td>
         <td class="mono">{{.Action}}</td>
-        <td class="mono">{{.Resource}} {{.ResourceID}}</td>
-        <td>{{if .Success}}<span class="ok-dot">ok</span>{{else}}<span class="bad-dot">error</span>{{end}}</td>
+        <td class="mono">{{.Target}}</td>
+        <td>{{if .Success}}<span class="badge status-healthy">ok</span>{{else}}<span class="badge status-unhealthy">error</span>{{end}}</td>
+        <td class="muted">{{dash .Detail}}</td>
       </tr>
     {{end}}
     </tbody>
   </table>
+  </div>
   {{end}}
 </div>
 {{template "footer" .}}

@@ -66,12 +66,12 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	nodes, err := api.ListNodes(ctx)
 	if err != nil {
-		s.pageErr(w, r, err)
+		s.dashboardFetchErr(w, r, err)
 		return
 	}
 	mappings, err := api.ListMappings(ctx)
 	if err != nil {
-		s.pageErr(w, r, err)
+		s.dashboardFetchErr(w, r, err)
 		return
 	}
 	now := s.now()
@@ -88,6 +88,15 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, r, "dashboard", p)
+}
+
+func (s *Server) dashboardFetchErr(w http.ResponseWriter, r *http.Request, err error) {
+	status, _ := classifyUIError(err)
+	if status == http.StatusUnauthorized || !hx(r) {
+		s.pageErr(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusBadGateway)
 }
 
 func (s *Server) nodesList(w http.ResponseWriter, r *http.Request) {
@@ -152,15 +161,21 @@ func (s *Server) nodeDetail(w http.ResponseWriter, r *http.Request) {
 		"Tunnels":     tunnels,
 		"Mappings":    nodeMappings,
 		"Sni":         flattenSni(ds.SniRoutes, cat),
-		"Plan":        planText,
+		"Plan":        buildPlanView(planText),
 		"Failback":    failbackBackends(ds, runtime),
 		"Catalog":     cat,
 		"CanFailback": len(failbackBackends(ds, runtime)) > 0,
+		"MgmtAddr":    managementAddr(*node),
+		"Labels":      formatLabels(node.Labels),
 	}
 	s.render(w, r, "node_detail", p)
 }
 
 func (s *Server) backendsList(w http.ResponseWriter, r *http.Request) {
+	s.renderBackends(w, r, emptyForm(), "")
+}
+
+func (s *Server) renderBackends(w http.ResponseWriter, r *http.Request, form map[string]string, formErr string) {
 	api := s.api(r)
 	ctx := r.Context()
 	backends, err := api.ListBackends(ctx)
@@ -173,19 +188,27 @@ func (s *Server) backendsList(w http.ResponseWriter, r *http.Request) {
 		s.pageErr(w, r, err)
 		return
 	}
+	if form == nil {
+		form = emptyForm()
+	}
 	p := s.pageBase(r, "Backends", "backends")
 	p.Data = map[string]any{
-		"Backends": backends,
-		"Nodes":    nodes,
-		"Catalog":  newCatalog(nodes, backends),
+		"Backends":  backends,
+		"Nodes":     nodes,
+		"Catalog":   newCatalog(nodes, backends),
+		"Form":      form,
+		"FormError": formErr,
 	}
 	s.render(w, r, "backends", p)
 }
 
 func (s *Server) backendDetail(w http.ResponseWriter, r *http.Request) {
+	s.renderBackendDetail(w, r, r.PathValue("id"), emptyForm(), "")
+}
+
+func (s *Server) renderBackendDetail(w http.ResponseWriter, r *http.Request, id string, form map[string]string, formErr string) {
 	api := s.api(r)
 	ctx := r.Context()
-	id := r.PathValue("id")
 	b, err := api.GetBackend(ctx, id)
 	if err != nil {
 		s.pageErr(w, r, err)
@@ -207,17 +230,26 @@ func (s *Server) backendDetail(w http.ResponseWriter, r *http.Request) {
 			related = append(related, t)
 		}
 	}
+	if form == nil {
+		form = emptyForm()
+	}
 	p := s.pageBase(r, b.Name, "backends")
 	p.Data = map[string]any{
-		"Backend": b,
-		"Nodes":   nodes,
-		"Tunnels": related,
-		"Catalog": newCatalog(nodes, []model.Backend{*b}),
+		"Backend":   b,
+		"Nodes":     nodes,
+		"Tunnels":   related,
+		"Catalog":   newCatalog(nodes, []model.Backend{*b}),
+		"Form":      form,
+		"FormError": formErr,
 	}
 	s.render(w, r, "backend_detail", p)
 }
 
 func (s *Server) tunnelsList(w http.ResponseWriter, r *http.Request) {
+	s.renderTunnels(w, r, emptyForm(), "")
+}
+
+func (s *Server) renderTunnels(w http.ResponseWriter, r *http.Request, form map[string]string, formErr string) {
 	api := s.api(r)
 	ctx := r.Context()
 	tunnels, err := api.ListTunnels(ctx)
@@ -244,16 +276,25 @@ func (s *Server) tunnelsList(w http.ResponseWriter, r *http.Request) {
 		}
 		rows = append(rows, buildTunnelRow(t, cat, findTunnelActual(runtime[t.NodeID], t)))
 	}
+	if form == nil {
+		form = emptyForm()
+	}
 	p := s.pageBase(r, "Tunnels", "tunnels")
 	p.Data = map[string]any{
-		"Rows":     rows,
-		"Nodes":    nodes,
-		"Backends": backends,
+		"Rows":      rows,
+		"Nodes":     nodes,
+		"Backends":  backends,
+		"Form":      form,
+		"FormError": formErr,
 	}
 	s.render(w, r, "tunnels", p)
 }
 
 func (s *Server) mappingsList(w http.ResponseWriter, r *http.Request) {
+	s.renderMappings(w, r, emptyForm(), "")
+}
+
+func (s *Server) renderMappings(w http.ResponseWriter, r *http.Request, form map[string]string, formErr string) {
 	api := s.api(r)
 	ctx := r.Context()
 	mappings, err := api.ListMappings(ctx)
@@ -271,12 +312,17 @@ func (s *Server) mappingsList(w http.ResponseWriter, r *http.Request) {
 		s.pageErr(w, r, err)
 		return
 	}
+	if form == nil {
+		form = emptyForm()
+	}
 	p := s.pageBase(r, "Mappings", "mappings")
 	p.Data = map[string]any{
-		"Mappings": mappings,
-		"Nodes":    nodes,
-		"Backends": backends,
-		"Catalog":  newCatalog(nodes, backends),
+		"Mappings":  mappings,
+		"Nodes":     nodes,
+		"Backends":  backends,
+		"Catalog":   newCatalog(nodes, backends),
+		"Form":      form,
+		"FormError": formErr,
 	}
 	if hx(r) {
 		s.render(w, r, "mappings-table", p)
@@ -286,6 +332,10 @@ func (s *Server) mappingsList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) sniList(w http.ResponseWriter, r *http.Request) {
+	s.renderSni(w, r, emptyForm(), "")
+}
+
+func (s *Server) renderSni(w http.ResponseWriter, r *http.Request, form map[string]string, formErr string) {
 	api := s.api(r)
 	ctx := r.Context()
 	routes, err := api.ListSniRoutes(ctx)
@@ -304,19 +354,28 @@ func (s *Server) sniList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cat := newCatalog(nodes, backends)
+	if form == nil {
+		form = emptyForm()
+	}
 	p := s.pageBase(r, "SNI routes", "sni")
 	p.Data = map[string]any{
-		"Rows":     flattenSni(routes, cat),
-		"Nodes":    nodes,
-		"Backends": backends,
+		"Rows":      flattenSni(routes, cat),
+		"Nodes":     nodes,
+		"Backends":  backends,
+		"Form":      form,
+		"FormError": formErr,
 	}
 	s.render(w, r, "sni", p)
 }
 
 func (s *Server) sniDetail(w http.ResponseWriter, r *http.Request) {
+	s.renderSniDetail(w, r, r.PathValue("id"), emptyForm(), "")
+}
+
+func (s *Server) renderSniDetail(w http.ResponseWriter, r *http.Request, id string, form map[string]string, formErr string) {
 	api := s.api(r)
 	ctx := r.Context()
-	route, err := api.GetSniRoute(ctx, r.PathValue("id"))
+	route, err := api.GetSniRoute(ctx, id)
 	if err != nil {
 		s.pageErr(w, r, err)
 		return
@@ -333,6 +392,15 @@ func (s *Server) sniDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	cat := newCatalog(nodes, backends)
 	def, extra := sniMatchesText(*route, cat)
+	if form == nil {
+		form = emptyForm()
+	}
+	if v := strings.TrimSpace(form["default_backend"]); v != "" {
+		def = v
+	}
+	if _, ok := form["matches"]; ok {
+		extra = form["matches"]
+	}
 	p := s.pageBase(r, "Edit SNI route", "sni")
 	p.Data = map[string]any{
 		"Route":          route,
@@ -340,6 +408,8 @@ func (s *Server) sniDetail(w http.ResponseWriter, r *http.Request) {
 		"Backends":       backends,
 		"DefaultBackend": def,
 		"ExtraMatches":   extra,
+		"Form":           form,
+		"FormError":      formErr,
 	}
 	s.render(w, r, "sni_detail", p)
 }
@@ -357,7 +427,7 @@ func (s *Server) eventsList(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	p := s.pageBase(r, "Events", "events")
 	p.Data = map[string]any{
-		"Events":   events,
+		"Events":   buildEventRows(events),
 		"Nodes":    nodes,
 		"Backends": backends,
 		"Filter": map[string]string{
@@ -367,16 +437,27 @@ func (s *Server) eventsList(w http.ResponseWriter, r *http.Request) {
 			"Until":   q.Get("until"),
 			"Action":  q.Get("action"),
 		},
+		"FilterActive": q.Get("node") != "" || q.Get("backend") != "" || q.Get("since") != "" || q.Get("until") != "" || q.Get("action") != "",
 	}
 	s.render(w, r, "events", p)
 }
 
 func (s *Server) pageErr(w http.ResponseWriter, r *http.Request, err error) {
-	msg := err.Error()
-	if strings.Contains(strings.ToLower(msg), "token") || strings.Contains(strings.ToLower(msg), "bearer") {
-		msg = "request failed"
+	status, a := classifyUIError(err)
+	if status == http.StatusUnauthorized {
+		if hx(r) {
+			w.Header().Set("HX-Redirect", "/login")
+			http.Error(w, "session expired", http.StatusUnauthorized)
+			return
+		}
+		http.Redirect(w, r, "/login?err=invalid+token", http.StatusSeeOther)
+		return
 	}
-	p := s.pageBase(r, "Error", "")
-	p.FlashErr = msg
-	s.render(w, r, "error", p)
+	if hx(r) {
+		s.renderStatus(w, r, status, "alert", page{Data: a})
+		return
+	}
+	p := s.pageBase(r, a.Title, "")
+	p.Data = a
+	s.renderStatus(w, r, status, "error", p)
 }

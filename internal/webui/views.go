@@ -1,6 +1,8 @@
 package webui
 
 import (
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -57,6 +59,10 @@ type nodeCard struct {
 	LastReconcile string
 	Heartbeat     string
 	MappingCount  int
+	MappingLabel  string
+	AgentStatus   string
+	AgentReported bool
+	Degraded      bool
 }
 
 func buildNodeCard(now time.Time, n model.Node, mappings []model.PortMapping, runtime *model.NodeActualState) nodeCard {
@@ -68,22 +74,30 @@ func buildNodeCard(now time.Time, n model.Node, mappings []model.PortMapping, ru
 		StatusClass:   "status-unknown",
 		Transport:     "—",
 		Handshake:     "—",
-		LastReconcile: "never",
-		Heartbeat:     "never",
+		LastReconcile: "—",
+		Heartbeat:     "—",
+		AgentStatus:   "unknown",
+		MappingLabel:  "—",
 	}
+	nMaps := 0
 	for _, m := range mappings {
 		if m.NodeID == n.ID && m.Enabled {
-			card.MappingCount++
+			nMaps++
 		}
 	}
+	card.MappingCount = nMaps
+	card.MappingLabel = strconv.Itoa(nMaps)
 	if runtime == nil || runtime.Status == nil || runtime.Status.LastHeartbeat.IsZero() {
-		card.Status = "unhealthy"
-		card.StatusClass = "status-unhealthy"
 		return card
 	}
+	card.AgentReported = true
 	st := runtime.Status
 	card.Heartbeat = relTime(now, st.LastHeartbeat)
-	card.LastReconcile = relTime(now, st.LastReconcile)
+	if st.LastReconcile.IsZero() {
+		card.LastReconcile = "—"
+	} else {
+		card.LastReconcile = relTime(now, st.LastReconcile)
+	}
 	card.Transport = pickTransport(st.TransportStates)
 	if runtime.Actual != nil {
 		if card.Transport == "—" {
@@ -96,14 +110,26 @@ func buildNodeCard(now time.Time, n model.Node, mappings []model.PortMapping, ru
 	case age > 45*time.Second || !st.Healthy:
 		card.Status = "unhealthy"
 		card.StatusClass = "status-unhealthy"
+		card.AgentStatus = "unhealthy"
 	case isDegraded(card.Transport):
 		card.Status = "degraded"
 		card.StatusClass = "status-degraded"
+		card.AgentStatus = "healthy"
+		card.Degraded = true
+	case staleHandshake(card.Handshake):
+		card.Status = "warning"
+		card.StatusClass = "status-warning"
+		card.AgentStatus = "healthy"
 	default:
 		card.Status = "healthy"
 		card.StatusClass = "status-healthy"
+		card.AgentStatus = "healthy"
 	}
 	return card
+}
+
+func staleHandshake(s string) bool {
+	return strings.HasSuffix(s, "h")
 }
 
 func pickTransport(states []model.TransportState) string {
@@ -179,35 +205,58 @@ func failbackBackends(ds *model.DesiredState, runtime *model.NodeActualState) []
 }
 
 type tunnelRow struct {
-	ID        string
-	Type      string
-	Node      string
-	Backend   string
-	Interface string
-	Handshake string
-	Rx        string
-	Tx        string
-	Healthy   bool
-	KeyPath   string
+	ID          string
+	Type        string
+	Node        string
+	Backend     string
+	Interface   string
+	Endpoint    string
+	Handshake   string
+	Rx          string
+	Tx          string
+	Priority    int
+	Status      string
+	StatusClass string
+	Healthy     bool
+	KeyPath     string
 }
 
 func buildTunnelRow(t model.Tunnel, cat Catalog, actual *model.TunnelActual) tunnelRow {
 	row := tunnelRow{
-		ID:        string(t.ID),
-		Type:      string(t.Type),
-		Node:      cat.NodeName(t.NodeID),
-		Backend:   cat.BackendName(t.BackendID),
-		Interface: t.InterfaceName,
-		Handshake: "—",
-		Rx:        "—",
-		Tx:        "—",
-		KeyPath:   t.PrivateKeyPath,
+		ID:          string(t.ID),
+		Type:        string(t.Type),
+		Node:        cat.NodeName(t.NodeID),
+		Backend:     cat.BackendName(t.BackendID),
+		Interface:   t.InterfaceName,
+		Endpoint:    t.Endpoint,
+		Handshake:   "—",
+		Rx:          "—",
+		Tx:          "—",
+		Priority:    t.Priority,
+		Status:      "unknown",
+		StatusClass: "status-unknown",
+		KeyPath:     t.PrivateKeyPath,
 	}
-	if actual != nil {
-		row.Handshake = fmtHandshake(actual.HandshakeAgeSec)
+	if actual == nil {
+		return row
+	}
+	row.Handshake = fmtHandshake(actual.HandshakeAgeSec)
+	if actual.RxBytes > 0 {
 		row.Rx = fmtBytes(actual.RxBytes)
+	}
+	if actual.TxBytes > 0 {
 		row.Tx = fmtBytes(actual.TxBytes)
-		row.Healthy = actual.InterfacePresent && (t.Type != model.TunnelWireGuard || actual.HandshakeAgeSec < 180)
+	}
+	row.Healthy = actual.InterfacePresent && (t.Type != model.TunnelWireGuard || actual.HandshakeAgeSec < 180)
+	if !actual.InterfacePresent {
+		row.Status = "unhealthy"
+		row.StatusClass = "status-unhealthy"
+	} else if t.Type == model.TunnelWireGuard && actual.HandshakeAgeSec >= 180 {
+		row.Status = "warning"
+		row.StatusClass = "status-warning"
+	} else {
+		row.Status = "healthy"
+		row.StatusClass = "status-healthy"
 	}
 	return row
 }
@@ -258,6 +307,15 @@ func flattenSni(routes []model.SniRoute, cat Catalog) []sniRow {
 			})
 		}
 	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Node != out[j].Node {
+			return out[i].Node < out[j].Node
+		}
+		if out[i].Listen != out[j].Listen {
+			return out[i].Listen < out[j].Listen
+		}
+		return out[i].Priority < out[j].Priority
+	})
 	return out
 }
 
@@ -308,6 +366,63 @@ func parseAllowedIPs(s string) []string {
 		}
 	}
 	return out
+}
+
+func managementAddr(n model.Node) string {
+	if n.Labels == nil {
+		return ""
+	}
+	for _, k := range []string{"mgmt", "management", "mgmt_ip", "management_ip"} {
+		if v := strings.TrimSpace(n.Labels[k]); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func formatLabels(m map[string]string) string {
+	if len(m) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var parts []string
+	for _, k := range keys {
+		parts = append(parts, k+"="+m[k])
+	}
+	return strings.Join(parts, ", ")
+}
+
+type eventRow struct {
+	When    string
+	Actor   string
+	Action  string
+	Target  string
+	Detail  string
+	Success bool
+}
+
+func buildEventRows(events []model.AuditEvent) []eventRow {
+	out := make([]eventRow, 0, len(events))
+	for _, e := range events {
+		target := strings.TrimSpace(e.Resource + " " + e.ResourceID)
+		out = append(out, eventRow{
+			When:    e.Timestamp.UTC().Format("2006-01-02 15:04:05"),
+			Actor:   e.Actor,
+			Action:  e.Action,
+			Target:  target,
+			Detail:  safeEventDetail(e.Detail),
+			Success: e.Success,
+		})
+	}
+	return out
+}
+
+func emptyForm() map[string]string {
+	return map[string]string{}
 }
 
 func resultLabel(ok bool) string {

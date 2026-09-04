@@ -1,55 +1,90 @@
 {{define "tunnels"}}
 {{template "header" .}}
+{{$form := .Data.Form}}
 <h1>Tunnels</h1>
 <p class="lead">Overlay links from a node to a backend. Private keys are path references on the node — never pasted here.</p>
+{{if .Data.FormError}}<div class="alert validation" role="alert">{{.Data.FormError}}</div>{{end}}
 
 <div class="panel">
-  {{if not .Data.Rows}}<p class="empty">No tunnels.</p>{{else}}
-  <table>
-    <thead><tr><th>Type</th><th>Node</th><th>Backend</th><th>Interface</th><th>Handshake</th><th>RX</th><th>TX</th></tr></thead>
+  {{if not .Data.Rows}}<p class="empty">No tunnels configured yet.</p>{{else}}
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>Type</th><th>Node</th><th>Backend</th><th>Interface</th><th>Handshake</th><th>RX</th><th>TX</th><th>Status</th></tr></thead>
     <tbody>
     {{range .Data.Rows}}
       <tr>
         <td class="mono">{{.Type}}</td>
         <td>{{.Node}}</td>
         <td>{{.Backend}}</td>
-        <td class="mono">{{.Interface}}</td>
-        <td class="mono">{{.Handshake}}</td>
-        <td class="mono">{{.Rx}}</td>
-        <td class="mono">{{.Tx}}</td>
+        <td class="mono">{{dash .Interface}}<span class="cell-sub">{{dash .Endpoint}}</span></td>
+        <td class="mono">{{dash .Handshake}}</td>
+        <td class="mono">{{dash .Rx}}</td>
+        <td class="mono">{{dash .Tx}}</td>
+        <td><span class="badge {{.StatusClass}}">{{.Status}}</span></td>
       </tr>
     {{end}}
     </tbody>
   </table>
+  </div>
   {{end}}
 </div>
 
 {{if .CanWrite}}
 <div class="panel">
   <h2>Create WireGuard tunnel</h2>
-  <form method="post" action="/tunnels" class="form-grid">
-    <label>Node
-      <select name="node_id" required>
-        {{range .Data.Nodes}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+  <form method="post" action="/tunnels" class="form-grid" data-disable-on-submit autocomplete="off">
+    <div class="field">
+      <label for="tun-node">Node</label>
+      <select id="tun-node" name="node_id" required>
+        {{range .Data.Nodes}}<option value="{{.ID}}" {{if eq (index $form "node_id") (printf "%s" .ID)}}selected{{end}}>{{.Name}}</option>{{end}}
       </select>
-    </label>
-    <label>Backend
-      <select name="backend_id" required>
-        {{range .Data.Backends}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+    </div>
+    <div class="field">
+      <label for="tun-backend">Backend</label>
+      <select id="tun-backend" name="backend_id" required>
+        {{range .Data.Backends}}<option value="{{.ID}}" {{if eq (index $form "backend_id") (printf "%s" .ID)}}selected{{end}}>{{.Name}}</option>{{end}}
       </select>
-    </label>
-    <label>Interface <input name="interface_name" required placeholder="wg-a"></label>
-    <label>Listen port <input name="listen_port" type="number" required value="51820"></label>
-    <label>Local overlay IP <input name="local_overlay_ip" required placeholder="10.200.1.1"></label>
-    <label>Remote overlay IP <input name="remote_overlay_ip" required placeholder="10.200.1.2"></label>
-    <label>Endpoint <input name="endpoint" placeholder="198.51.100.20:51820"></label>
-    <label>Allowed IPs <input name="allowed_ips" placeholder="10.200.1.2/32"></label>
-    <label>Keepalive <input name="persistent_keepalive" type="number" value="25"></label>
-    <label>Priority <input name="priority" type="number" value="0"></label>
-    <label class="wide">Private key file path on the node
-      <input name="private_key_path" required placeholder="/etc/proxyctl/keys/wg-a.key">
-    </label>
-    <div class="wide"><button type="submit">Create</button></div>
+    </div>
+    <div class="field">
+      <label for="tun-if">Interface</label>
+      <input id="tun-if" name="interface_name" required placeholder="wg-a" value="{{index $form "interface_name"}}">
+    </div>
+    <div class="field">
+      <label for="tun-port">Listen port</label>
+      <input id="tun-port" name="listen_port" type="number" required value="{{if index $form "listen_port"}}{{index $form "listen_port"}}{{else}}51820{{end}}">
+    </div>
+    <div class="field">
+      <label for="tun-local">Local overlay IP</label>
+      <input id="tun-local" name="local_overlay_ip" required placeholder="10.200.1.1" value="{{index $form "local_overlay_ip"}}">
+    </div>
+    <div class="field">
+      <label for="tun-remote">Remote overlay IP</label>
+      <input id="tun-remote" name="remote_overlay_ip" required placeholder="10.200.1.2" value="{{index $form "remote_overlay_ip"}}">
+    </div>
+    <div class="field">
+      <label for="tun-ep">Endpoint</label>
+      <input id="tun-ep" name="endpoint" placeholder="198.51.100.20:51820" value="{{index $form "endpoint"}}">
+    </div>
+    <div class="field">
+      <label for="tun-allowed">Allowed IPs</label>
+      <input id="tun-allowed" name="allowed_ips" placeholder="10.200.1.2/32" value="{{index $form "allowed_ips"}}">
+    </div>
+    <div class="field">
+      <label for="tun-ka">Keepalive</label>
+      <input id="tun-ka" name="persistent_keepalive" type="number" value="{{if index $form "persistent_keepalive"}}{{index $form "persistent_keepalive"}}{{else}}25{{end}}">
+    </div>
+    <div class="field">
+      <label for="tun-prio">Priority</label>
+      <input id="tun-prio" name="priority" type="number" value="{{if index $form "priority"}}{{index $form "priority"}}{{else}}0{{end}}">
+    </div>
+    <div class="field wide">
+      <label for="tun-key">Private key file path on the node</label>
+      <input id="tun-key" name="private_key_path" required placeholder="/etc/proxyctl/keys/wg-a.key" value="{{index $form "private_key_path"}}" autocomplete="off">
+      <span class="field-help">Filesystem path only. Do not paste key material.</span>
+    </div>
+    <div class="wide actions">
+      <button type="submit">Create</button>
+    </div>
   </form>
 </div>
 {{end}}
