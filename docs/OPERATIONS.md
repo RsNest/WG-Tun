@@ -24,9 +24,17 @@ Then browse `http://127.0.0.1:8444`. Sign in with an operator or readonly API to
 
 **Do not bind this to `0.0.0.0` without the same controls as the API.** It is a localhost operator console. There is no mTLS on the UI listener.
 
-Pages: dashboard (node cards, 8s HTMX poll), nodes (desired vs actual plan, apply/failback for operators), backends, tunnels (WireGuard create; key **path** only), mappings (enable/disable via `PATCH /api/v1/mappings/{id}` — disabled mappings drop out of desired-state), SNI routes, audit log (`GET /events?node=&backend=&from=&to=`).
+Pages: dashboard (node cards, 8s HTMX poll), nodes (desired vs actual plan via `GET /api/v1/nodes/{id}/plan`, Failback for operators), backends, tunnels (WireGuard create; key **path** only), mappings (enable/disable via `PATCH /api/v1/mappings/{id}`), SNI routes, events (`GET /events` calls `GET /api/v1/events?node=&backend=&since=&until=&action=`).
 
-Failback in the UI records the same fail-forward intent as `proxctl` / `POST .../failback` (confirm dialog). Apply from the UI is the controller dry-run plan unless live apply is enabled (it is not on this binary); live mutation remains agent-driven.
+**Plan preview vs audited dry-run.** The UI Plan preview button calls `GET /api/v1/nodes/{id}/plan`: read-only Diff, no apply audit. `POST /api/v1/nodes/{id}/apply` with `{"dry_run": true}` remains a distinct operator/CLI operation that records `apply-dry-run`. Do not treat them as the same contract.
+
+**Apply while LiveApply is disabled.** This controller binary has `LiveApply` off. The UI Apply button is disabled and the node page shows `Live apply is not enabled on this controller.` Plan preview stays available. Live mutation remains agent-driven (`dry_run_only` on the agent).
+
+**Failback** is the explicit human-triggered transition `SSH_PRIMARY` → `WG_PRIMARY` (`POST /api/v1/nodes/{id}/failback`, HTTP 202). Confirm dialog in the UI.
+
+**Mapping `enabled`.** `true` means the mapping is in desired-state. `false` keeps it in inventory and omits it from desired-state; if it still exists on the node, the next plan contains the corresponding DELETE. Unchanged disabled state after convergence is `NO CHANGES`.
+
+**Actual-state.** Agents `POST /api/v1/nodes/{id}/actual-state`. Operators and readonly users `GET` the same path for the last stored actual-state plus agent status. That GET does not expose secrets.
 
 ## Agent
 
@@ -47,7 +55,7 @@ proxctl --controller https://127.0.0.1:8443 --token-file ./data/bootstrap.token 
 
 Env (flags win): `PROXYCTL_CONTROLLER`, `PROXYCTL_TOKEN`, `PROXYCTL_TOKEN_FILE`, `PROXYCTL_INSECURE`.
 
-`apply` without `--dry-run` still returns a controller-side plan from last actual-state; **live mutation is agent-driven**.
+`apply` without `--dry-run` still returns a controller-side plan from last actual-state and records an `apply-dry-run` audit event while LiveApply is off; **live mutation is agent-driven**. For a read-only preview with no apply audit, use `GET /api/v1/nodes/{id}/plan`.
 
 ## Backups
 

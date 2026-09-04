@@ -67,7 +67,9 @@ Open `http://127.0.0.1:8444`, paste an **operator** or **readonly** API token (t
 
 Default bind is your choice at start time; **use loopback**. This is an operator tool, not a public website. If you bind it beyond localhost, put it behind the same network restrictions as the API (VPN, firewall, SSH tunnel). The UI listener is plain HTTP on purpose so it stays off the TLS API port.
 
-Readonly users can browse; Apply / Failback / create / toggle / delete are hidden **and** rejected server-side.
+Readonly users can browse inventory, plan, status, and events. Apply / Failback / create / toggle / delete are hidden or disabled **and** rejected server-side.
+
+While LiveApply is disabled on this controller, the Apply button is disabled with the text `Live apply is not enabled on this controller.` Plan preview uses `GET /api/v1/nodes/{id}/plan` and does not create an apply audit event. `POST /apply` with `dry_run: true` remains a separate audited CLI/API operation.
 
 ## Monitoring
 

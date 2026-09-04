@@ -7,7 +7,8 @@ info:
     Authentication: Bearer token plus HMAC-SHA256 over
     `timestamp + method + path + sha256(body)` using the bearer token as key.
     Headers: `Authorization: Bearer <token>`, `X-Proxyctl-Timestamp`, `X-Proxyctl-Signature`.
-    Roles: operator (mutate+read), readonly (read), agent (mutate+read for assigned node).
+    Roles: operator (mutate+read), readonly (read), agent (mutate+read).
+    Canonical contract: docs/ARCHITECTURE.md. This file must stay synchronized with it.
 servers:
   - url: https://127.0.0.1:8443
 paths:
@@ -71,9 +72,11 @@ paths:
           schema: {type: string}
       responses:
         "200":
-          description: desired state
+          description: desired state (disabled mappings omitted)
   /api/v1/nodes/{id}/actual-state:
     get:
+      summary: Read last stored actual-state
+      description: Returns stored ActualState plus AgentStatus (TransportState is inside actual). Does not expose secrets. Empty object if the agent has not reported.
       security: [{bearerAuth: []}]
       parameters:
         - in: path
@@ -84,6 +87,7 @@ paths:
         "200":
           description: last reported actual-state and agent status (empty if none)
     post:
+      summary: Agent reports actual-state
       security: [{bearerAuth: []}]
       parameters:
         - in: path
@@ -93,8 +97,33 @@ paths:
       responses:
         "202":
           description: recorded
+  /api/v1/nodes/{id}/plan:
+    get:
+      summary: Read-only reconcile plan
+      description: |
+        Reads desired-state and stored actual-state, runs reconcile.Diff, returns the plan.
+        Does not mutate anything and does not create an apply audit event.
+        Distinct from POST .../apply {"dry_run": true}, which is an explicit audited dry-run.
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: plan text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanView"
   /api/v1/nodes/{id}/apply:
     post:
+      summary: Explicit apply (audited)
+      description: |
+        Operator-triggered apply. dry_run=true records apply-dry-run and returns the plan.
+        When LiveApply is disabled, dry_run=false also returns a dry-run plan and audits apply-dry-run.
+        Live host mutation is agent-driven.
       security: [{bearerAuth: []}]
       parameters:
         - in: path
@@ -113,15 +142,33 @@ paths:
           description: CONFLICT
   /api/v1/nodes/{id}/failback:
     post:
+      summary: Failback
+      description: |
+        Explicit human-triggered Failback: SSH_PRIMARY → WG_PRIMARY.
+        The controller stores the intent and returns 202. The agent consumes it on the next cycle
+        if WireGuard is healthy. Internal persistence may use action=fail_forward.
       security: [{bearerAuth: []}]
       parameters:
         - in: path
           name: id
           required: true
           schema: {type: string}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                backend: {type: string}
+                backend_id: {type: string}
+                action: {type: string, description: implementation default fail_forward}
       responses:
-        "501":
-          description: not implemented until Stage 4
+        "202":
+          description: Failback intent accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailbackIntent"
   /api/v1/backends:
     get:
       security: [{bearerAuth: []}]
@@ -144,7 +191,7 @@ paths:
       responses:
         "200":
           description: backend
-    put:
+    patch:
       security: [{bearerAuth: []}]
       parameters:
         - in: path
@@ -159,33 +206,13 @@ paths:
       security: [{bearerAuth: []}]
       responses:
         "200":
-          description: list
+          description: list (including disabled catalog entries)
     post:
       security: [{bearerAuth: []}]
       responses:
         "201":
-          description: created
+          description: created (enabled defaults true)
   /api/v1/mappings/{id}:
-    get:
-      security: [{bearerAuth: []}]
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: {type: string}
-      responses:
-        "200":
-          description: mapping
-    put:
-      security: [{bearerAuth: []}]
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: {type: string}
-      responses:
-        "200":
-          description: updated
     patch:
       security: [{bearerAuth: []}]
       parameters:
@@ -197,13 +224,10 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required: [enabled]
-              properties:
-                enabled: {type: boolean}
+              $ref: "#/components/schemas/MappingPatch"
       responses:
         "200":
-          description: enabled flag updated (omitted from desired-state when false)
+          description: mapping updated
     delete:
       security: [{bearerAuth: []}]
       parameters:
@@ -258,7 +282,7 @@ paths:
       responses:
         "200":
           description: route
-    put:
+    patch:
       security: [{bearerAuth: []}]
       parameters:
         - in: path
@@ -268,23 +292,31 @@ paths:
       responses:
         "200":
           description: updated
-  /api/v1/audit:
+  /api/v1/events:
     get:
+      summary: Audit events
       security: [{bearerAuth: []}]
       parameters:
         - in: query
           name: node
           schema: {type: string}
+          description: node id or name
         - in: query
           name: backend
           schema: {type: string}
+          description: backend id or name
         - in: query
-          name: from
+          name: since
           schema: {type: string}
-          description: YYYY-MM-DD or RFC3339
+          description: YYYY-MM-DD or RFC3339 (inclusive start). No from alias.
         - in: query
-          name: to
+          name: until
           schema: {type: string}
+          description: YYYY-MM-DD or RFC3339 (inclusive end of day for dates). No to alias.
+        - in: query
+          name: action
+          schema: {type: string}
+          description: exact audit action (create, update, apply-dry-run, failback, …)
       responses:
         "200":
           description: recent audit events
@@ -336,3 +368,30 @@ components:
       type: object
       properties:
         dry_run: {type: boolean}
+    PlanView:
+      type: object
+      properties:
+        plan: {type: string}
+    MappingPatch:
+      type: object
+      properties:
+        node_id: {type: string}
+        backend_id: {type: string}
+        backend: {type: string}
+        protocol: {type: string, enum: [TCP, UDP]}
+        public_port: {type: integer}
+        backend_port: {type: integer}
+        enabled:
+          type: boolean
+          description: |
+            true: mapping participates in desired-state.
+            false: mapping remains in inventory and is omitted from desired-state;
+            the next plan DELETE's it if it still exists on the node.
+    FailbackIntent:
+      type: object
+      properties:
+        id: {type: string}
+        node_id: {type: string}
+        backend_id: {type: string}
+        action: {type: string}
+        created_at: {type: string, format: date-time}

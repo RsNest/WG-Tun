@@ -9,7 +9,7 @@ Stages 1–5 of the staged MVP are in tree. The items below are intentionally no
 - Token revoke/rotate API and per-node binding (operator can mint `agent` tokens via `POST /api/v1/tokens` / `proxctl token add`; revoke is still missing). Do not reuse the bootstrap operator token on live agents.
 - UDP backend probes (TCP probes + overlay ping only).
 - HAProxy SNI backend port is assumed 443 when rendering `server` lines.
-- `automatic_failforward` cannot enable unattended SSH→WG (by design). The Web UI can record the same operator fail-forward intent as the CLI.
+- `automatic_failforward` cannot enable unattended SSH→WG (by design). The Web UI Failback control records the same operator Failback request as the CLI (`POST /api/v1/nodes/{id}/failback`).
 - Controller does not push apply to agents (agents poll).
 - No combined “new backend + tunnel + mappings” wizard; use the existing sequential API/CLI (or the separate forms in the Web UI).
 - Installer does not install WireGuard/HAProxy packages; it only checks a subset and refuses to overwrite HAProxy config.

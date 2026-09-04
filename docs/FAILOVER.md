@@ -6,7 +6,7 @@ Per backend that has both a `WIREGUARD` tunnel and an `SSH_TUN` tunnel.
 
 `WG_PRIMARY` → (automatic, after `failure_threshold` consecutive failed cycles, default 3) → `FAILBACK_IN_PROGRESS` → `SSH_PRIMARY`
 
-`SSH_PRIMARY` → `WG_PRIMARY` **only** via operator `POST /api/v1/nodes/{id}/failback` (`action=fail_forward`). Never automatic, even if `automatic_failforward` is true (the flag is ignored as a safety default).
+`SSH_PRIMARY` → `WG_PRIMARY` **only** via operator Failback: `POST /api/v1/nodes/{id}/failback`. Never automatic, even if `automatic_failforward` is true (the flag is ignored as a safety default). The stored intent may still use the internal action name `fail_forward`.
 
 If neither transport is healthy: `DEGRADED` and log `CRITICAL_NO_HEALTHY_TRANSPORT`. Traffic is not blindly rerouted.
 
@@ -29,10 +29,10 @@ lock → snapshot firewall/HAProxy/state → start SSH unit if needed → verify
 
 On failure: restore firewall, restore HAProxy, `systemctl reload haproxy`, restore transport state.
 
-## Operator fail-forward
+## Operator Failback
 
 ```bash
 proxctl failback --node ru-edge-1 --backend backend-a
 ```
 
-The controller stores a `fail_forward` intent; the agent consumes it on the next cycle if WireGuard is healthy.
+Failback is the explicit human-triggered transition `SSH_PRIMARY` → `WG_PRIMARY`. The controller stores the intent (HTTP 202); the agent consumes it on the next cycle if WireGuard is healthy.
