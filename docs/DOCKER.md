@@ -14,7 +14,7 @@ Host `go test` / `go build` remains optional for local iteration.
 
 Platform published in this phase: **linux/amd64**. The Dockerfile is structured so linux/arm64 can be added later without a second build system.
 
-Do not deploy from a mutable `latest` tag. `latest` is not published.
+Do not deploy from a mutable `latest` tag. The publish workflow sets `latest=false`; `latest` is not published.
 
 ## Tags
 

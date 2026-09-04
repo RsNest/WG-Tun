@@ -59,6 +59,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/rsnest/wg-tun-controller
+          flavor: |
+            latest=false
           tags: |
             type=raw,value=main,enable={{is_default_branch}}
             type=sha,prefix=sha-,format=short
@@ -71,6 +73,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/rsnest/wg-tun-agent
+          flavor: |
+            latest=false
           tags: |
             type=raw,value=main,enable={{is_default_branch}}
             type=sha,prefix=sha-,format=short
@@ -83,6 +87,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/rsnest/wg-tun-proxctl
+          flavor: |
+            latest=false
           tags: |
             type=raw,value=main,enable={{is_default_branch}}
             type=sha,prefix=sha-,format=short

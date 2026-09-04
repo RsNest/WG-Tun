@@ -48,6 +48,16 @@ compose() {
   docker compose "${COMPOSE_FILES[@]}" "$@"
 }
 
+# Live overlay after the base file; put the release overlay last so GHCR
+# image: and build reset win if live.yml ever sets image/build.
+compose_live() {
+  if [ -n "${PROXYCTL_VERSION:-}" ]; then
+    docker compose -f docker-compose.yml -f docker-compose.live.yml -f docker-compose.release.yml "$@"
+  else
+    docker compose -f docker-compose.yml -f docker-compose.live.yml "$@"
+  fi
+}
+
 json_field() {
   jq -r --arg k "$1" '.[$k] // empty'
 }
@@ -78,9 +88,11 @@ fi
 
 log "starting controller only (live agent stays down until the token is in place)"
 if [ -n "${PROXYCTL_VERSION:-}" ]; then
-  compose pull controller
+  compose pull
+else
+  compose build controller bootstrap
 fi
-compose up -d "${BUILD_OPTS[@]}" controller
+compose up -d controller
 
 log "waiting for controller https://127.0.0.1:8443/readyz"
 ok=0
@@ -183,9 +195,9 @@ fi
 
 log "starting live overlay (dry_run_only=true) + prometheus profile obs"
 if [ -n "${PROXYCTL_VERSION:-}" ]; then
-  compose -f docker-compose.live.yml --profile obs pull
+  compose_live --profile obs pull
 fi
-compose -f docker-compose.live.yml --profile obs up -d "${BUILD_OPTS[@]}"
+compose_live --profile obs up -d "${BUILD_OPTS[@]}"
 
 cat <<EOF
 proxyctl-smoke: live overlay is up with dry_run_only: true and an agent-role token.

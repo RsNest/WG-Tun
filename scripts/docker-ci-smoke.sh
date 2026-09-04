@@ -41,10 +41,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "controller plain-http healthz/readyz"
+echo "controller packaged config, plain-http healthz/readyz"
 docker run -d --name "$name" --no-healthcheck \
   "$CONTROLLER_IMAGE" \
-  --plain-http --listen 0.0.0.0:8080 --data-dir /tmp/proxyctl-ci
+  --config /etc/proxyctl/controller.yaml --plain-http --listen 0.0.0.0:8080
 ok=0
 i=1
 while [ "$i" -le 30 ]; do
@@ -62,6 +62,43 @@ if [ "$ok" -ne 1 ]; then
   exit 1
 fi
 
-echo "agent starts (--version already proved binary); dry-run config is image default"
-docker inspect --format '{{.Config.User}}' "$AGENT_IMAGE" >/dev/null
+echo "agent runtime tools (from CommandRunner usage; systemd stays on the host)"
+docker run --rm --user 0 --entrypoint sh "$AGENT_IMAGE" -c '
+  set -eu
+  command -v ip
+  command -v wg
+  command -v iptables
+  command -v iptables-save
+  command -v iptables-restore
+  command -v haproxy
+  command -v ping
+'
+
+echo "agent dry-run start (no live mutation; dummy token; no controller)"
+aname="proxyctl-ci-agent-$$"
+atok="$(mktemp)"
+cleanup_agent() {
+  docker rm -f "$aname" >/dev/null 2>&1 || true
+  rm -f "$atok"
+}
+trap 'cleanup; cleanup_agent' EXIT
+printf 'ci-smoke-token\n' >"$atok"
+docker run -d --name "$aname" --network none --no-healthcheck \
+  -v "$atok:/data/bootstrap.token:ro" \
+  "$AGENT_IMAGE"
+aok=0
+i=1
+while [ "$i" -le 30 ]; do
+  if docker exec "$aname" /usr/local/bin/proxyctl-agent healthcheck --url http://127.0.0.1:9101/healthz; then
+    aok=1
+    break
+  fi
+  sleep 1
+  i=$((i + 1))
+done
+if [ "$aok" -ne 1 ]; then
+  docker logs "$aname" >&2 || true
+  echo "agent did not become ready" >&2
+  exit 1
+fi
 echo "docker-ci-smoke: ok"
