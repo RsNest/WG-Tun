@@ -1,4 +1,4 @@
-# transitforge
+# TransitForge
 
 Multi-node edge/proxy infrastructure manager: desired-state controller, rootful edge agent, and `transitforge` CLI.
 
@@ -103,6 +103,7 @@ Alert rules: `deploy/prometheus/alerts.yml`.
 - `docs/FAILOVER.md`
 - `docs/DOCKER.md`
 - `docs/REMAINING_WORK.md`
+- `docs/RENAME.md` (existing-installation migration and verification)
 - `api/openapi.yaml`
 
 ## Installer (Debian/Ubuntu)

@@ -1,5 +1,5 @@
 # Local source-build lab (Docker Engine + Compose). Canonical images:
-#   ghcr.io/rsnest/wg-tun-{controller,agent,transitforge}
+#   ghcr.io/rsnest/transitforge-{controller,agent,cli}
 # Release pull (no build): docker-compose.release.yml + TRANSITFORGE_VERSION.
 # Live Linux overlay: docker-compose.live.yml (see docs/DOCKER.md).
 name: transitforge

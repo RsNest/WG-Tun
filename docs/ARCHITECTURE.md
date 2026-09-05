@@ -200,7 +200,7 @@ Planning that is **not** yet the implemented contract lives in `docs/ROADMAP.md`
 GitHub
   -> GitHub Actions
   -> Docker Buildx (linux/amd64)
-  -> GHCR (ghcr.io/rsnest/wg-tun-{controller,agent,transitforge})
+  -> GHCR (ghcr.io/rsnest/transitforge-{controller,agent,cli})
   -> explicit operator deployment (`TRANSITFORGE_VERSION=sha-…` or `v…`)
 ```
 

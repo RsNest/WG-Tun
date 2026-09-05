@@ -68,7 +68,11 @@ func run() error {
 	if err := os.MkdirAll(cfg.DataDir, 0o750); err != nil {
 		return err
 	}
-	st, err := store.OpenSQLite(cfg.DBPath())
+	dbPath, err := cfg.DBPath()
+	if err != nil {
+		return err
+	}
+	st, err := store.OpenSQLite(dbPath)
 	if err != nil {
 		return fmt.Errorf("open sqlite: %w", err)
 	}

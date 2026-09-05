@@ -3,6 +3,12 @@
 # Does not mutate iptables/WireGuard. Requires Docker; does not require host Go.
 set -euo pipefail
 
+# Git Bash + Docker Desktop: keep container paths literal. Convert only the
+# temporary host directory used by bind mounts and docker cp below.
+if command -v cygpath >/dev/null 2>&1; then
+  export MSYS_NO_PATHCONV=1
+fi
+
 CONTROLLER_IMAGE="${CONTROLLER_IMAGE:?CONTROLLER_IMAGE is required}"
 AGENT_IMAGE="${AGENT_IMAGE:?AGENT_IMAGE is required}"
 CLI_IMAGE="${CLI_IMAGE:?CLI_IMAGE is required}"
@@ -64,6 +70,9 @@ net="transitforge-ci-net-$$"
 name="transitforge-ci-ctrl-$$"
 aname="transitforge-ci-agent-$$"
 tmpdir="$(mktemp -d)"
+if command -v cygpath >/dev/null 2>&1; then
+  tmpdir="$(cygpath -m "$tmpdir")"
+fi
 atok="$tmpdir/bootstrap.token"
 ayaml="$tmpdir/agent.yaml"
 

@@ -140,7 +140,7 @@ It mints an **agent-role** token via `transitforge token add --role agent --out-
 
 ## Image deploy, update, rollback
 
-Runtime hosts pull `ghcr.io/rsnest/wg-tun-*`. They do not install Go. Pin `TRANSITFORGE_VERSION` to `sha-<short>` or a `v*` tag. Do not deploy `main` as the rollback handle.
+Runtime hosts pull `ghcr.io/rsnest/transitforge-*`. They do not install Go. Pin `TRANSITFORGE_VERSION` to `sha-<short>` or a `v*` tag. Do not deploy `main` as the rollback handle.
 
 Controller:
 

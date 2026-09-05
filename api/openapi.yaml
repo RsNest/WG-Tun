@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: transitforge API
+  title: TransitForge API
   version: 0.5.0
   description: |
     Multi-node edge/proxy infrastructure manager.

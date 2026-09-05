@@ -172,37 +172,75 @@ const (
 	legacyDBFileName = "proxyctl.db" // one-time rename of the pre-rebrand SQLite file
 )
 
-func (c *ControllerConfig) DBPath() string {
+func (c *ControllerConfig) DBPath() (string, error) {
 	return ResolveDBPath(c.DataDir)
 }
 
 // ResolveDBPath returns the SQLite path under dataDir.
 // If only the pre-rebrand filename exists, it is renamed (including WAL/SHM).
-func ResolveDBPath(dataDir string) string {
+// All controllers using dataDir must be stopped before migration.
+func ResolveDBPath(dataDir string) (string, error) {
 	newPath := filepath.Join(dataDir, dbFileName)
 	oldPath := filepath.Join(dataDir, legacyDBFileName)
-	if fileExists(newPath) {
-		return newPath
+	oldExists, err := sqliteFileExists(oldPath)
+	if err != nil {
+		return "", err
 	}
-	if fileExists(oldPath) {
+	newExists, err := sqliteFileExists(newPath)
+	if err != nil {
+		return "", err
+	}
+	if oldExists && newExists {
+		return "", fmt.Errorf("both legacy and current SQLite files exist; resolve the data directory conflict before startup")
+	}
+	if oldExists {
 		if err := renameSQLiteFile(oldPath, newPath); err != nil {
-			return oldPath
+			return "", fmt.Errorf("migrate SQLite filename: %w", err)
 		}
 	}
-	return newPath
+	return newPath, nil
 }
 
 func renameSQLiteFile(oldPath, newPath string) error {
-	if err := os.Rename(oldPath, newPath); err != nil {
-		return err
+	// Preflight every destination; never overwrite an orphan sidecar.
+	var suffixes []string
+	for _, suffix := range []string{"-wal", "-shm", "-journal", ""} {
+		if exists, err := sqliteFileExists(newPath + suffix); err != nil {
+			return err
+		} else if exists {
+			return fmt.Errorf("migration destination already exists: %s", newPath+suffix)
+		}
+		if exists, err := sqliteFileExists(oldPath + suffix); err != nil {
+			return err
+		} else if exists {
+			suffixes = append(suffixes, suffix)
+		}
 	}
-	for _, suf := range []string{"-wal", "-shm"} {
-		from, to := oldPath+suf, newPath+suf
-		if fileExists(from) {
-			_ = os.Rename(from, to)
+	for i, suffix := range suffixes {
+		if err := os.Rename(oldPath+suffix, newPath+suffix); err != nil {
+			for j := i - 1; j >= 0; j-- {
+				if rollbackErr := os.Rename(newPath+suffixes[j], oldPath+suffixes[j]); rollbackErr != nil {
+					return fmt.Errorf("rename failed: %v; rollback failed: %w; restore the offline backup before retrying", err, rollbackErr)
+				}
+			}
+			return err
 		}
 	}
 	return nil
+}
+
+func sqliteFileExists(path string) (bool, error) {
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if !info.Mode().IsRegular() {
+		return false, fmt.Errorf("SQLite path is not a regular file: %s", path)
+	}
+	return true, nil
 }
 
 func loadYAML(path string, out any) error {

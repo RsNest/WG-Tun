@@ -107,7 +107,10 @@ func TestResolveDBPathRenamesLegacyFile(t *testing.T) {
 	if err := os.WriteFile(old+"-wal", []byte("wal"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got := config.ResolveDBPath(dir)
+	got, err := config.ResolveDBPath(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	want := filepath.Join(dir, "transitforge.db")
 	if got != want {
 		t.Fatalf("path %s", got)
