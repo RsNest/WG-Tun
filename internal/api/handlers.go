@@ -50,6 +50,25 @@ func (s *Server) listTokens(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+func (s *Server) revokeToken(w http.ResponseWriter, r *http.Request) {
+	p := PrincipalFrom(r.Context())
+	if p == nil || !auth.CanManageTokens(p.Role) {
+		writeErr(w, model.Forbidden("only administrator or operator can revoke tokens"))
+		return
+	}
+	id := r.PathValue("id")
+	if err := s.store.RevokeToken(r.Context(), model.ID(id)); err != nil {
+		s.audit(r, "revoke", "token", id, err.Error(), false)
+		if store.IsNotFound(err) {
+			err = model.NotFound("token", id)
+		}
+		writeErr(w, err)
+		return
+	}
+	s.audit(r, "revoke", "token", id, "", true)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) createToken(w http.ResponseWriter, r *http.Request) {
 	p := PrincipalFrom(r.Context())
 	if p == nil || !auth.CanManageTokens(p.Role) {

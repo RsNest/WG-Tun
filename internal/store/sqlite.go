@@ -527,6 +527,23 @@ func (s *SQLite) CreateToken(ctx context.Context, t *model.Token) error {
 	return wrap("CreateToken", err)
 }
 
+// RevokeToken retains token metadata and its name so bootstrap cannot recreate it.
+// Repeated revocation succeeds; an unknown ID returns ErrNotFound.
+func (s *SQLite) RevokeToken(ctx context.Context, id model.ID) error {
+	result, err := s.db.ExecContext(ctx, `UPDATE tokens SET revoked=1 WHERE id=?`, id)
+	if err != nil {
+		return wrap("RevokeToken", err)
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return wrap("RevokeToken", err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (s *SQLite) LookupTokenByHash(ctx context.Context, hash string) (*model.Token, error) {
 	row := s.db.QueryRowContext(ctx, `SELECT id,name,hash,role,created_at,revoked FROM tokens WHERE hash=? AND revoked=0`, hash)
 	return scanToken(row)

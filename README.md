@@ -74,6 +74,18 @@ While LiveApply is disabled on this controller, the Apply button is disabled wit
 - **Refresh plan** calls `GET /api/v1/nodes/{id}/plan` (read-only desired-vs-actual difference; no apply audit).
 - **Run audited dry-run** (operators only) calls `POST /api/v1/nodes/{id}/apply` with `{"dry_run": true}` and records `apply-dry-run`.
 
+## API token lifecycle
+
+Use `transitforge token list` to find token IDs and revocation status. Metadata never includes token hashes or plaintext.
+
+```bash
+transitforge token add --name edge-replacement --role agent --out-file ./edge-replacement.token
+# Configure the agent with the replacement and verify it can authenticate, then:
+transitforge token revoke --id OLD_TOKEN_ID
+```
+
+Revocation is permanent, audited, and blocks subsequent API requests immediately. Repeating it is safe. Only operators and administrators may revoke tokens. Revoked records remain in the database, including bootstrap records, so a controller restart does not recreate them. Before revoking your own operator token, ensure you have another working operator token or administrator account.
+
 ## Monitoring
 
 | Process | Endpoints |

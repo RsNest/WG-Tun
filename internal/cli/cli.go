@@ -89,6 +89,8 @@ Commands:
   failback --node NAME
   failback status --node NAME
   token add --name NAME --role operator|readonly|agent [--out-file PATH] [--output json|token]
+  token list
+  token revoke --id ID
   whoami
   version
 `
@@ -321,10 +323,30 @@ func whoamiCmd(ctx context.Context, c *client.Client, opt Options) error {
 }
 
 func tokenCmd(ctx context.Context, c *client.Client, args []string, opt Options) error {
-	if len(args) == 0 || args[0] != "add" {
-		return fmt.Errorf("token: expected add")
+	if len(args) == 0 {
+		return fmt.Errorf("token: expected add, list, or revoke")
 	}
 	fs := parseFlags(args[1:])
+	switch args[0] {
+	case "list":
+		out, err := c.ListTokens(ctx)
+		if err != nil {
+			return err
+		}
+		return printJSON(opt.Stdout, out)
+	case "revoke":
+		id := strings.TrimSpace(fs["id"])
+		if id == "" {
+			return fmt.Errorf("token revoke requires --id")
+		}
+		if err := c.RevokeToken(ctx, id); err != nil {
+			return err
+		}
+		return printJSON(opt.Stdout, map[string]any{"id": id, "revoked": true})
+	case "add":
+	default:
+		return fmt.Errorf("token: expected add, list, or revoke")
+	}
 	role, err := model.ParseRole(fs["role"])
 	if err != nil {
 		return err

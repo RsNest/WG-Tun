@@ -72,6 +72,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/whoami", s.authn(s.whoami, false))
 	mux.HandleFunc("GET /api/v1/tokens", s.authn(s.listTokens, false))
 	mux.HandleFunc("POST /api/v1/tokens", s.authn(s.createToken, true))
+	mux.HandleFunc("POST /api/v1/tokens/{id}/revoke", s.authn(s.revokeToken, true))
 
 	mux.HandleFunc("GET /api/v1/users", s.authn(s.listUsers, false))
 	mux.HandleFunc("POST /api/v1/users", s.authn(s.createUser, true))

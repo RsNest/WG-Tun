@@ -8,7 +8,7 @@ Stages 1–5 of the staged MVP are in tree. The items below are intentionally no
 
 - Postgres store implementation (interface is SQLite-only today).
 - mTLS agent↔controller (Bearer+HMAC is implemented instead).
-- Token revoke/rotate API and per-node binding (operator can mint `agent` tokens via `POST /api/v1/tokens` / `transitforge token add`; revoke is still missing). Do not reuse the bootstrap operator token on live agents.
+- Dedicated token rotation API and per-node binding. Mint, list, and revoke are implemented (`transitforge token add|list|revoke`); rotate manually by issuing a replacement, updating the agent, then revoking the old token. Do not reuse the bootstrap operator token on live agents.
 - UDP backend probes (TCP probes + overlay ping only).
 - HAProxy SNI backend port is assumed 443 when rendering `server` lines.
 - `automatic_failforward` cannot enable unattended SSH→WG (by design). The Web UI Failback control records the same operator Failback request as the CLI (`POST /api/v1/nodes/{id}/failback`).

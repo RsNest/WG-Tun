@@ -350,6 +350,25 @@ paths:
           description: minted token (plaintext returned once)
         "403":
           description: caller is not administrator or operator
+  /api/v1/tokens/{id}/revoke:
+    post:
+      summary: Revoke an API token permanently
+      description: Retains metadata. Repeated revocation succeeds. Subsequent authentication with this token fails.
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "204":
+          description: Token revoked (including already revoked tokens)
+        "401":
+          description: Missing or invalid authentication
+        "403":
+          description: Caller is not administrator or operator
+        "404":
+          description: Token ID does not exist
   /api/v1/users:
     get:
       security: [{bearerAuth: []}]

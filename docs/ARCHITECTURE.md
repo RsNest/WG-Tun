@@ -95,6 +95,7 @@ Human Web UI roles: `administrator`, `operator`, `readonly`. API token roles rem
 | GET | `/api/v1/whoami` | read | caller name and role |
 | GET | `/api/v1/tokens` | administrator or operator | token metadata (hashes omitted) |
 | POST | `/api/v1/tokens` | administrator or operator | mint a token (plaintext returned once) |
+| POST | `/api/v1/tokens/{id}/revoke` | administrator or operator | permanently revoke; 204 also for already revoked, 404 for unknown ID; audited |
 | GET | `/api/v1/users` | administrator | list human users |
 | POST | `/api/v1/users` | administrator | create a human user |
 | GET | `/api/v1/users/{id}` | administrator or self | get a human user |

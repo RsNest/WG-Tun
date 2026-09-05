@@ -252,6 +252,13 @@ func (c *Client) ListEvents(ctx context.Context, query string) ([]model.AuditEve
 	return out, err
 }
 
+func (c *Client) RevokeToken(ctx context.Context, id string) error {
+	if strings.TrimSpace(id) == "" || strings.ContainsAny(id, "/?#%") {
+		return model.Validation("invalid token ID")
+	}
+	return c.Do(ctx, http.MethodPost, "/api/v1/tokens/"+id+"/revoke", nil, nil)
+}
+
 func (c *Client) ListTokens(ctx context.Context) ([]model.Token, error) {
 	var out []model.Token
 	err := c.Do(ctx, http.MethodGet, "/api/v1/tokens", nil, &out)

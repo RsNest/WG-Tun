@@ -58,6 +58,7 @@ type Store interface {
 	GetActualState(ctx context.Context, nodeID model.ID) (*model.ActualState, *model.AgentStatus, error)
 
 	CreateToken(ctx context.Context, t *model.Token) error
+	RevokeToken(ctx context.Context, id model.ID) error
 	LookupTokenByHash(ctx context.Context, hash string) (*model.Token, error)
 	ListTokens(ctx context.Context) ([]model.Token, error)
 	HasTokenName(ctx context.Context, name string) (bool, error)
