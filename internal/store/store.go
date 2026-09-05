@@ -21,6 +21,11 @@ type Store interface {
 	GetNodeByName(ctx context.Context, name string) (*model.Node, error)
 	ListNodes(ctx context.Context) ([]model.Node, error)
 
+	CreateForeignNode(ctx context.Context, n *model.ForeignNode) error
+	GetForeignNode(ctx context.Context, id model.ID) (*model.ForeignNode, error)
+	ListForeignNodes(ctx context.Context) ([]model.ForeignNode, error)
+	UpdateForeignNode(ctx context.Context, n *model.ForeignNode) error
+
 	CreateBackend(ctx context.Context, b *model.Backend) error
 	GetBackend(ctx context.Context, id model.ID) (*model.Backend, error)
 	GetBackendByName(ctx context.Context, name string) (*model.Backend, error)

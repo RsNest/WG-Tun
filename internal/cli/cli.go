@@ -47,6 +47,8 @@ func Run(args []string, opt Options) error {
 	switch args[0] {
 	case "node":
 		return nodeCmd(ctx, c, args[1:], opt)
+	case "foreign-node":
+		return foreignNodeCmd(ctx, c, args[1:], opt)
 	case "backend":
 		return backendCmd(ctx, c, args[1:], opt)
 	case "mapping":
@@ -76,6 +78,10 @@ const helpText = `transitforge — TransitForge operator CLI
 Commands:
   node add --name NAME [--public-ip IP]
   node list
+  foreign-node list
+  foreign-node get ID
+  foreign-node add --name NAME --public-address HOST [--management-address HOST] [--country CC] [--provider UNMANAGED|3X_UI|SHARX] [--overlay-addresses IP,IP]
+  foreign-node update ID [--name NAME] [--public-address HOST] [--management-address HOST] [--country CC] [--provider TYPE] [--overlay-addresses IP,IP]
   backend add --name NAME --node NAME --address IP
   backend list
   mapping add --node NAME --backend NAME --protocol TCP|UDP --public-port N --backend-port N

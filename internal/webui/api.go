@@ -15,6 +15,10 @@ import (
 // API is the controller REST surface the UI is allowed to call.
 // Tests substitute a fake; production uses the in-process client.
 type API interface {
+	ListForeignNodes(ctx context.Context) ([]model.ForeignNode, error)
+	GetForeignNode(ctx context.Context, id string) (*model.ForeignNode, error)
+	CreateForeignNode(ctx context.Context, n model.ForeignNodeInput) (*model.ForeignNode, error)
+	PatchForeignNode(ctx context.Context, id string, patch model.ForeignNodePatch) (*model.ForeignNode, error)
 	Whoami(ctx context.Context) (*model.PrincipalView, error)
 	ListNodes(ctx context.Context) ([]model.Node, error)
 	GetNode(ctx context.Context, id string) (*model.Node, error)

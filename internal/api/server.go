@@ -84,6 +84,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/users/{id}/recovery-codes", s.authn(s.rotateRecovery, false))
 
 	mux.HandleFunc("GET /api/v1/nodes", s.authn(s.listNodes, false))
+	mux.HandleFunc("GET /api/v1/foreign-nodes", s.foreignAccess(s.listForeignNodes, false))
+	mux.HandleFunc("POST /api/v1/foreign-nodes", s.foreignAccess(s.createForeignNode, true))
+	mux.HandleFunc("GET /api/v1/foreign-nodes/{id}", s.foreignAccess(s.getForeignNode, false))
+	mux.HandleFunc("PATCH /api/v1/foreign-nodes/{id}", s.foreignAccess(s.patchForeignNode, true))
 	mux.HandleFunc("POST /api/v1/nodes", s.authn(s.createNode, true))
 	mux.HandleFunc("GET /api/v1/nodes/{id}", s.authn(s.getNode, false))
 	mux.HandleFunc("GET /api/v1/nodes/{id}/desired-state", s.authn(s.desiredState, false))

@@ -20,6 +20,7 @@ import (
 )
 
 type fakeAPI struct {
+	foreign          []model.ForeignNode
 	me               model.PrincipalView
 	whoamiErr        error
 	listErr          error

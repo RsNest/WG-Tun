@@ -171,7 +171,7 @@ The operator console is compiled into `transitforge-controller` (`internal/webui
 
 Why a second listener: the API mux is Bearer + HMAC. Cookie sessions and HTML forms do not belong on that surface. A localhost HTTP UI avoids mixing `Set-Cookie` with the existing TLS authenticator and needs no change to agent clients.
 
-The UI does not implement inventory or reconcile itself. Handlers call `internal/client` through an in-process `http.RoundTripper` that invokes `api.Handler().ServeHTTP`. Password sessions sign loopback requests with UI HMAC headers instead of storing the password as an HMAC key. Node detail and the Plan preview button obtain the plan from `GET /api/v1/nodes/{id}/plan`. The UI must not import `internal/reconcile`.
+The UI does not implement inventory or reconcile itself. Handlers call `internal/client` through an in-process `http.RoundTripper` that invokes `api.Handler().ServeHTTP`. Password sessions sign loopback requests with UI HMAC headers instead of storing the password as an HMAC key. Node detail and the Plan preview button obtain the plan from `GET /api/v1/nodes/{id}/plan`. Foreign Nodes are management inventory records shown at `/foreign-nodes`; their provider connections and inbound discovery are not yet implemented. The UI must not import `internal/reconcile`.
 
 Human sign-in is username/password. The first visit with zero human users shows a setup form that creates the first **administrator**. TOTP (RFC 6238) and hashed recovery codes are optional per user. An API token login remains available as a collapsed fallback for `operator` and `readonly` tokens. Agent tokens are rejected.
 
@@ -179,10 +179,10 @@ Writes require an **operator or administrator** session on the UI **and** still 
 
 Locales: English (fallback) and Russian. Chrome strings use translation keys in `internal/webui/i18n/{en,ru}.json`. Protocol names, IDs, plan lines, and raw diagnostic evidence are not translated. Preference order: user profile → `transitforge_locale` cookie / session → `Accept-Language` → English.
 
-Navigation groups (current pages only; future Foreign Nodes / Path Checks / Routes are not stubbed):
+Navigation groups (current pages; Path Checks and Routes remain future work):
 
 - Overview: Dashboard
-- Infrastructure: Entry Nodes (`/nodes`), Backends, Tunnels, Mappings, SNI Routes
+- Infrastructure: Entry Nodes (`/nodes`), Foreign Nodes (`/foreign-nodes`), Backends, Tunnels, Mappings, SNI Routes
 - Monitoring: Events
 - Administration: Users & Access, API Reference, Settings
 

@@ -102,6 +102,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /nodes/{id}/failback", s.requireSession(s.nodeFailback))
 
 	mux.HandleFunc("GET /backends", s.requireSession(s.backendsList))
+	mux.HandleFunc("GET /foreign-nodes", s.requireSession(s.foreignNodes))
+	mux.HandleFunc("GET /foreign-nodes/{id}", s.requireSession(s.foreignNodes))
+	mux.HandleFunc("POST /foreign-nodes", s.requireSession(s.saveForeignNode))
+	mux.HandleFunc("POST /foreign-nodes/{id}", s.requireSession(s.saveForeignNode))
 	mux.HandleFunc("GET /backends/{id}", s.requireSession(s.backendDetail))
 	mux.HandleFunc("POST /backends", s.requireSession(s.backendCreate))
 	mux.HandleFunc("POST /backends/{id}", s.requireSession(s.backendUpdate))
@@ -265,16 +269,17 @@ func (s *Server) writeForbidden(w http.ResponseWriter, r *http.Request) {
 }
 
 var pageCrumbs = map[string][2]string{
-	"dashboard": {"nav.group.overview", "nav.dashboard"},
-	"nodes":     {"nav.group.infrastructure", "nav.entry_nodes"},
-	"backends":  {"nav.group.infrastructure", "nav.backends"},
-	"tunnels":   {"nav.group.infrastructure", "nav.tunnels"},
-	"mappings":  {"nav.group.infrastructure", "nav.mappings"},
-	"sni":       {"nav.group.infrastructure", "nav.sni_routes"},
-	"events":    {"nav.group.monitoring", "nav.events"},
-	"users":     {"nav.group.administration", "nav.users"},
-	"apiref":    {"nav.group.administration", "nav.api_reference"},
-	"settings":  {"nav.group.administration", "nav.settings"},
+	"foreign-nodes": {"nav.group.infrastructure", "foreign.title"},
+	"dashboard":     {"nav.group.overview", "nav.dashboard"},
+	"nodes":         {"nav.group.infrastructure", "nav.entry_nodes"},
+	"backends":      {"nav.group.infrastructure", "nav.backends"},
+	"tunnels":       {"nav.group.infrastructure", "nav.tunnels"},
+	"mappings":      {"nav.group.infrastructure", "nav.mappings"},
+	"sni":           {"nav.group.infrastructure", "nav.sni_routes"},
+	"events":        {"nav.group.monitoring", "nav.events"},
+	"users":         {"nav.group.administration", "nav.users"},
+	"apiref":        {"nav.group.administration", "nav.api_reference"},
+	"settings":      {"nav.group.administration", "nav.settings"},
 }
 
 func (s *Server) navCollapsed(r *http.Request) bool {

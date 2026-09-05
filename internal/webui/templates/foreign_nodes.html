@@ -1,0 +1,50 @@
+{{define "foreign_nodes"}}
+{{template "header" .}}
+{{$form := .Data.Form}}
+{{$selected := .Data.ForeignNode}}
+<div class="page-toolbar">
+  <div class="page-toolbar-text"><h1>{{.Tr "foreign.title"}}</h1><p class="lead">{{.Tr "foreign.lead"}}</p></div>
+  <div class="page-toolbar-actions">
+    {{if .CanWrite}}<a class="btn" href="/foreign-nodes?new=1">{{.Tr "foreign.create"}}</a>{{end}}
+    <a class="btn secondary" href="/foreign-nodes">{{.Tr "action.refresh"}}</a>
+  </div>
+</div>
+{{if .Data.FormError}}<div class="alert validation flash-slot" role="alert">{{.Data.FormError}}</div>{{end}}
+<div class="workspace">
+  <div class="workspace-main">
+    <div class="filter-row" data-filter-table="foreign-nodes-table"><input type="search" data-filter-q placeholder="{{.Tr "ui.search"}}" aria-label="{{.Tr "ui.search"}}"></div>
+    {{if not .Data.ForeignNodes}}<p class="empty">{{.Tr "foreign.empty"}}</p>{{else}}
+    <div class="table-wrap"><table class="data" id="foreign-nodes-table">
+      <thead><tr><th data-sort>{{.Tr "field.name"}}</th><th data-sort>{{.Tr "foreign.country"}}</th><th data-sort>{{.Tr "foreign.public_address"}}</th><th data-sort>{{.Tr "foreign.provider"}}</th><th>{{.Tr "field.status"}}</th></tr></thead>
+      <tbody>{{range .Data.ForeignNodes}}<tr data-href="/foreign-nodes?id={{.ID}}" tabindex="0" {{if eq (printf "%s" .ID) $.Data.SelectedID}}class="selected"{{end}}>
+        <td class="name-cell"><a href="/foreign-nodes?id={{.ID}}">{{.Name}}</a></td><td>{{dash .Country}}</td><td class="mono">{{.PublicAddress}}</td><td>{{.ProviderType}}</td><td><span class="status-unknown">{{$.Tr "foreign.unverified"}}</span></td>
+      </tr>{{end}}</tbody>
+    </table></div>{{end}}
+  </div>
+  {{if or $selected .Data.ShowCreate}}
+  <aside class="detail-panel" role="complementary">
+    <div class="panel-head"><h2>{{if $selected}}{{$selected.Name}}{{else}}{{.Tr "foreign.create"}}{{end}}</h2><a class="icon-btn" data-panel-close href="/foreign-nodes" aria-label="{{.Tr "action.close"}}">×</a></div>
+    <p class="hint">{{.Tr "foreign.connection_note"}}</p>
+    {{if .CanWrite}}
+    <form method="post" action="/foreign-nodes{{if $selected}}/{{$selected.ID}}{{end}}" class="form-grid" data-disable-on-submit>
+      <div class="field"><label for="foreign-name">{{.Tr "field.name"}}</label><input id="foreign-name" name="name" maxlength="63" required value="{{index $form "name"}}" placeholder="cz-01"></div>
+      <div class="field"><label for="foreign-country">{{.Tr "foreign.country"}}</label><input id="foreign-country" name="country" maxlength="2" value="{{index $form "country"}}" placeholder="CZ"></div>
+      <div class="field wide"><label for="foreign-public">{{.Tr "foreign.public_address"}}</label><input id="foreign-public" name="public_address" required value="{{index $form "public_address"}}" placeholder="edge.example.net"></div>
+      <div class="field wide"><label for="foreign-management">{{.Tr "foreign.management_address"}}</label><input id="foreign-management" name="management_address" value="{{index $form "management_address"}}"></div>
+      <div class="field wide"><label for="foreign-overlays">{{.Tr "foreign.overlays"}}</label><input id="foreign-overlays" name="overlay_addresses" value="{{index $form "overlay_addresses"}}" placeholder="10.200.1.2, fd00::2"><p class="hint">{{.Tr "foreign.overlay_hint"}}</p></div>
+      <div class="field wide"><label for="foreign-provider">{{.Tr "foreign.provider"}}</label><select id="foreign-provider" name="provider_type">
+        <option value="UNMANAGED" {{if eq (index $form "provider_type") "UNMANAGED"}}selected{{end}}>UNMANAGED</option>
+        <option value="3X_UI" {{if eq (index $form "provider_type") "3X_UI"}}selected{{end}}>3x-ui</option>
+        <option value="SHARX" {{if eq (index $form "provider_type") "SHARX"}}selected{{end}}>SharX</option>
+      </select></div>
+      <div class="wide actions"><button type="submit">{{if $selected}}{{.Tr "action.save"}}{{else}}{{.Tr "action.create"}}{{end}}</button><a class="btn secondary" href="/foreign-nodes">{{.Tr "action.cancel"}}</a></div>
+    </form>
+    {{else if $selected}}
+    <dl class="meta"><dt>{{.Tr "foreign.public_address"}}</dt><dd>{{$selected.PublicAddress}}</dd><dt>{{.Tr "foreign.management_address"}}</dt><dd>{{dash $selected.ManagementAddress}}</dd><dt>{{.Tr "foreign.country"}}</dt><dd>{{dash $selected.Country}}</dd><dt>{{.Tr "foreign.provider"}}</dt><dd>{{$selected.ProviderType}}</dd><dt>{{.Tr "foreign.overlays"}}</dt><dd>{{range $selected.OverlayAddresses}}<div>{{.}}</div>{{else}}—{{end}}</dd></dl>
+    {{end}}
+    {{if $selected}}<details><summary>{{.Tr "foreign.advanced"}}</summary><dl class="meta"><dt>{{.Tr "field.id"}}</dt><dd><code>{{$selected.ID}}</code></dd>{{range $key, $value := $selected.Labels}}<dt>{{$key}}</dt><dd>{{$value}}</dd>{{end}}</dl></details>{{end}}
+  </aside>
+  {{end}}
+</div>
+{{template "footer" .}}
+{{end}}

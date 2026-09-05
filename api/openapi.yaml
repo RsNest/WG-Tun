@@ -369,6 +369,50 @@ paths:
           description: Caller is not administrator or operator
         "404":
           description: Token ID does not exist
+  /api/v1/foreign-nodes:
+    get:
+      security: [{bearerAuth: []}]
+      description: List Foreign Node management inventory. Agent tokens are rejected.
+      responses:
+        "200": {description: Foreign Nodes}
+        "403": {description: Caller role is not allowed}
+    post:
+      security: [{bearerAuth: []}]
+      description: Create a Foreign Node record; this does not install or contact a provider.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, public_address]
+              properties:
+                name: {type: string}
+                public_address: {type: string}
+                management_address: {type: string}
+                country: {type: string, minLength: 2, maxLength: 2}
+                overlay_addresses: {type: array, items: {type: string}}
+                provider_type: {type: string, enum: [UNMANAGED, 3X_UI, SHARX]}
+                labels: {type: object, additionalProperties: {type: string}}
+      responses:
+        "201": {description: Created Foreign Node}
+        "400": {description: Invalid input}
+  /api/v1/foreign-nodes/{id}:
+    get:
+      security: [{bearerAuth: []}]
+      responses:
+        "200": {description: Foreign Node}
+        "404": {description: Foreign Node not found}
+    patch:
+      security: [{bearerAuth: []}]
+      description: Update supplied fields; omitted fields remain unchanged.
+      requestBody:
+        required: true
+        content:
+          application/json: {schema: {type: object}}
+      responses:
+        "200": {description: Updated Foreign Node}
+        "400": {description: Invalid input}
   /api/v1/users:
     get:
       security: [{bearerAuth: []}]

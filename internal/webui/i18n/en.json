@@ -1,4 +1,20 @@
 {
+  "foreign": {
+    "title": "Foreign Nodes",
+    "lead": "Servers hosting your destination services.",
+    "create": "Add foreign node",
+    "empty": "No foreign nodes registered yet.",
+    "country": "Country code",
+    "public_address": "Public IP or hostname",
+    "management_address": "Management IP or hostname (optional)",
+    "overlays": "Overlay IP addresses",
+    "overlay_hint": "Separate IP addresses with commas; omit CIDR prefixes.",
+    "provider": "Panel software",
+    "unverified": "Not checked",
+    "connection_note": "This record describes the server. Panel connections and inbound discovery are not available yet; reachability has not been checked.",
+    "advanced": "Advanced",
+    "saved": "Foreign node saved."
+  },
   "nav": {
     "group": {
       "overview": "Overview",

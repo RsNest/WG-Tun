@@ -48,6 +48,9 @@
         <a href="/nodes" title="{{.Tr "nav.entry_nodes"}}" {{if eq .Nav "nodes"}}class="active" aria-current="page"{{end}}>
           <svg class="icon" aria-hidden="true"><use href="#i-nodes"/></svg><span class="nav-label">{{.Tr "nav.entry_nodes"}}</span>
         </a>
+        <a href="/foreign-nodes" title="{{.Tr "foreign.title"}}" {{if eq .Nav "foreign-nodes"}}class="active" aria-current="page"{{end}}>
+          <svg class="icon" aria-hidden="true"><use href="#i-nodes"/></svg><span class="nav-label">{{.Tr "foreign.title"}}</span>
+        </a>
         <a href="/backends" title="{{.Tr "nav.backends"}}" {{if eq .Nav "backends"}}class="active" aria-current="page"{{end}}>
           <svg class="icon" aria-hidden="true"><use href="#i-backends"/></svg><span class="nav-label">{{.Tr "nav.backends"}}</span>
         </a>

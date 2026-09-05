@@ -4,7 +4,7 @@ Stages 1–5 of the staged MVP are in tree. The items below are intentionally no
 
 ## Known gaps
 
-- Human Web UI accounts (password, administrator/operator/readonly, TOTP, recovery codes, EN/RU UI) are implemented. Foreign Node provisioning, provider installers, Path Checks, and the Route Wizard are not.
+- Human Web UI accounts (password, administrator/operator/readonly, TOTP, recovery codes, EN/RU UI) and read-only Foreign Node inventory are implemented. Provider connections/adapters, inbound discovery, provider installers, Path Checks, and the Route Wizard are not.
 
 - Postgres store implementation (interface is SQLite-only today).
 - mTLS agent↔controller (Bearer+HMAC is implemented instead).
